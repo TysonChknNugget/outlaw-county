@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Outlaw County — A Frontier Crime Sandbox</title>
-  <meta name="description" content="Outlaw County is a 2D open-world western crime sandbox. Rob banks and trains, ride the frontier, and outrun the law in 1890s Dustwater County. Play free in your browser or download for Windows.">
+  <meta name="description" content="Outlaw County is a 2D open-world western crime sandbox. Rob banks and trains, ride the frontier, and outrun the law in 1890s Dustwater County. Download it free for Windows.">
   <meta property="og:title" content="Outlaw County">
   <meta property="og:description" content="Rob. Ride. Run. A 2D open-world western crime sandbox.">
   <meta property="og:image" content="assets/icon.png">
@@ -21,7 +21,7 @@
       <a href="#controls">Controls</a>
       <a href="#about">About</a>
     </nav>
-    <a class="btn btn-sm" href="game/index.html">Play Now</a>
+    <a class="btn btn-sm" href="#" data-download>Download</a>
   </header>
 
   <!-- ============== HERO ============== -->
@@ -37,10 +37,9 @@
       </h1>
       <p class="tagline">Rob the bank. Hold up the express. Ride hard and stay ahead of the law in a sprawling pixel-art frontier where every bullet leaves a witness.</p>
       <div class="cta">
-        <a class="btn btn-lg" href="game/index.html" id="play-now"><span class="ico">▶</span> Play Now <small>Free · in your browser</small></a>
-        <a class="btn btn-lg btn-dark" href="#" id="download-win"><span class="ico">⬇</span> Download for Windows <small id="dl-sub">Windows 10/11 · 64-bit</small></a>
+        <a class="btn btn-lg" href="#" id="download-win"><span class="ico">⬇</span> Download for Windows <small id="dl-sub">Windows 10/11 · 64-bit</small></a>
       </div>
-      <p class="hero-note">No install, no account. Your progress saves on your own computer.</p>
+      <p class="hero-note">Free. No account needed. Plays offline, and your progress saves on your own computer.</p>
     </div>
     <a class="scroll-hint" href="#intro" aria-label="Scroll down">▾</a>
   </section>
@@ -169,21 +168,21 @@
       <div>
         <h2 class="section-title">About the game</h2>
         <p>Outlaw County is a love letter to frontier crime stories, built from scratch with HTML5 Canvas and plain JavaScript. No game engine, no external assets: every building, horse, gunshot and campfire is drawn or synthesized by code at runtime.</p>
-        <p>The browser version and the Windows desktop app run the exact same game files. Both work offline and keep your saves on your own machine.</p>
+        <p>Outlaw County runs as its own Windows app. It works fully offline and keeps your saves on your own machine.</p>
       </div>
       <div class="spec">
         <h3>Specs</h3>
         <dl>
           <dt>Genre</dt><dd>Open-world western crime sandbox</dd>
-          <dt>Platforms</dt><dd>Web browser · Windows 10/11 (64-bit)</dd>
+          <dt>Platform</dt><dd>Windows 10/11 (64-bit)</dd>
           <dt>Input</dt><dd>Keyboard &amp; mouse</dd>
           <dt>Saves</dt><dd>3 manual slots + autosave, stored locally</dd>
-          <dt>Size</dt><dd>About 320 KB of game code (browser)</dd>
+          <dt>Download</dt><dd>78 MB installer, or a portable ZIP</dd>
           <dt>Price</dt><dd>Free</dd>
         </dl>
         <div class="cta small">
-          <a class="btn" href="game/index.html">Play Now</a>
-          <a class="btn btn-dark" href="#" data-download>Download for Windows</a>
+          <a class="btn" href="#" data-download>Download for Windows</a>
+          <a class="btn btn-dark" href="https://github.com/TysonChknNugget/outlaw-county/releases/download/v1.0.0/OutlawCounty-1.0.0-win-x64.zip">Portable ZIP</a>
         </div>
       </div>
     </div>
@@ -193,7 +192,7 @@
     <div class="wrap foot">
       <div class="brand"><img src="assets/icon.png" alt="" width="28" height="28"><span>Outlaw County</span></div>
       <p>© <span id="year">2026</span> Outlaw County. All rights reserved. A work of fiction — any resemblance to real outlaws is purely coincidental.</p>
-      <nav><a href="#top">Back to top</a><a href="game/index.html">Play</a></nav>
+      <nav><a href="#top">Back to top</a><a href="#" data-download>Download</a></nav>
     </div>
   </footer>
 
@@ -208,7 +207,6 @@
         <li>Then run <code>npm run dist</code></li>
       </ol>
       <p>That builds <code>dist/OutlawCounty-Setup-1.0.0.exe</code> and a portable ZIP, copies both into <code>downloads/</code> and updates <code>downloads/manifest.js</code> so this button points at them. See <code>README.md</code> for details.</p>
-      <p>Until then you can <a href="game/index.html">play in your browser</a> — it's the same game.</p>
       <div class="dlg-btns"><button class="btn">Got it</button></div>
     </form>
   </dialog>

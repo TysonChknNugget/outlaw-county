@@ -1,0 +1,38 @@
+# Publishes only the website to GitHub Pages. The playable game page
+# (game/index.html) is left out on purpose: the game is download-only.
+# The website still loads four game scripts to draw its live world previews.
+name: Deploy website
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble website
+        run: |
+          mkdir -p _site/game/js
+          cp -r index.html css js assets downloads .nojekyll _site/
+          cp game/js/util.js game/js/data.js game/js/world.js game/js/sprites.js _site/game/js/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
