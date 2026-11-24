@@ -43,20 +43,86 @@ const SaveSys = {
   latest() { return this.list().filter(s => s.meta).sort((a, b) => b.meta.savedAt - a.meta.savedAt)[0] || null; }
 };
 
+/* ---------------- loading screen ---------------- */
+const LOADING_TIPS = [
+  'Crimes need witnesses. Stop a civilian before they reach the sheriff and the crime never happened.',
+  'Break line of sight — hide in brush or indoors — and the law will eventually call off the search.',
+  'Pay off your bounty at a train station or sheriff\'s office when nobody is chasing you.',
+  'Hold right mouse to steady your aim and draw your gun. You need it drawn to rob a clerk.',
+  'Trains stop at every station. That\'s your chance to crack the express car.',
+  'Press H to whistle and your horse will come running.',
+  'Galloping drains your horse\'s stamina. Feed it oats to keep it fresh.',
+  'Old Silas at the Hollister camp buys stolen goods, no questions asked.',
+  'Buy a round at the saloon and someone might let slip where treasure is buried.',
+  'The single-action hits hard but you have to thumb the hammer between shots.',
+  'Pelts sell best at Trapper Jo\'s cabin in Pinewood Forest.',
+  'Rent a hotel room to sleep until morning, heal up and save your game.',
+  'Rattlesnake gang camps are dangerous, but their loot is worth the risk.',
+  'At one wanted star, lawmen try to arrest you. Press E to surrender, or run.'
+];
+
+const Loading = {
+  show(status) {
+    const el = $('loading');
+    el.classList.remove('hidden', 'out');
+    $('ld-continue').classList.add('hidden');
+    $('ld-tip').textContent = pick(LOADING_TIPS);
+    this.set(0, status);
+  },
+  set(p, status) {
+    $('ld-fill').style.width = Math.round(p * 100) + '%';
+    if (status) $('ld-status').textContent = status;
+    const n = Math.floor(p * 6 + 0.001);
+    Array.from($('loading').querySelectorAll('.ld-cylinder i')).forEach((c, i) => c.classList.toggle('on', i < n));
+  },
+  tick() { return new Promise(r => setTimeout(r, 30)); },
+  /* render the terrain chunks around a point ahead of time so the first frames are smooth */
+  async prewarm(x, y, from, to, status) {
+    const S = World.CH * TS, mx = Game.vw / 2 + S, my = Game.vh / 2 + S;
+    const list = [];
+    for (let cy = Math.max(0, Math.floor((y - my) / S)); cy <= Math.min(World.CHh - 1, Math.floor((y + my) / S)); cy++)
+      for (let cx = Math.max(0, Math.floor((x - mx) / S)); cx <= Math.min(World.CW - 1, Math.floor((x + mx) / S)); cx++) list.push([cx, cy]);
+    for (let i = 0; i < list.length; i++) {
+      World.getChunk(list[i][0], list[i][1]);
+      if (i % 3 === 2) { this.set(from + (to - from) * (i + 1) / list.length, status); await this.tick(); }
+    }
+    this.set(to, status);
+  },
+  waitForContinue() {
+    $('ld-continue').classList.remove('hidden');
+    return new Promise(res => {
+      const go = () => { window.removeEventListener('pointerdown', go); window.removeEventListener('keydown', go); res(); };
+      window.addEventListener('pointerdown', go); window.addEventListener('keydown', go);
+    });
+  },
+  hide() {
+    const el = $('loading');
+    el.classList.add('out');
+    setTimeout(() => { if (el.classList.contains('out')) el.classList.add('hidden'); }, 650);
+  }
+};
+
 const Game = {
   canvas: null, ctx: null, overlay: null, octx: null, light: null,
   zoom: 3, vw: 640, vh: 360, dpr: 1, last: 0, fps: 60, fpsAcc: 0, fpsN: 0, t: 0,
   autosaveT: 180, drawList: [], menuCam: { x: 0, y: 0, a: 0 },
 
-  init() {
+  async init() {
     this.canvas = $('view'); this.ctx = this.canvas.getContext('2d');
     this.overlay = $('overlay'); this.octx = this.overlay.getContext('2d');
     this.light = document.createElement('canvas');
     this.loadSettings();
+    this.resize();
+    Loading.show('Surveying the county...');
+    await Loading.tick();
     World.generate(1889);
+    Loading.set(0.35, 'Raising Dustwater...');
+    await Loading.tick();
     Env.init(); FX.init(); Bullets.init();
     Input.init(this.overlay);
     UI.init(); UI.syncSettings();
+    Loading.set(0.45, 'Rounding up the townsfolk...');
+    await Loading.tick();
     this.resetState();
     Spawner.initWorld();
     G.player = new Player();
@@ -64,13 +130,34 @@ const Game = {
     this.menuCam = { x: 40 * TS, y: 112 * TS, a: 0 };
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('beforeunload', () => { if (G.state === 'play') this.autosave(); });
-    this.resize();
     this.applySettings();
-    $('loading').classList.add('hidden');
+    await Loading.prewarm(this.menuCam.x, 118 * TS, 0.55, 1, 'Painting the frontier...');
+    Loading.set(1, 'Ready.');
     UI.showMainMenu();
     const unlock = () => { Sound.init(); Sound.applyVolumes(); };
     window.addEventListener('pointerdown', unlock); window.addEventListener('keydown', unlock);
     requestAnimationFrame(ts => this.loop(ts));
+    await Loading.waitForContinue(); // the first click also unlocks game audio
+    Loading.hide();
+  },
+
+  /* run a world (re)build behind the loading screen */
+  async withLoading(status, build) {
+    if (this.busy) return;
+    this.busy = true;
+    const t0 = performance.now();
+    Loading.show(status);
+    await Loading.tick();
+    try {
+      if (build() === false) { Loading.hide(); return; }
+      Loading.set(0.4, 'Saddling your horse...');
+      await Loading.tick();
+      await Loading.prewarm(G.player.x, G.player.y, 0.4, 1, 'Riding out...');
+      const wait = 1300 - (performance.now() - t0);
+      if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    } finally { this.busy = false; }
+    Loading.set(1, 'Ready.');
+    Loading.hide();
   },
 
   resetState() {
@@ -85,13 +172,16 @@ const Game = {
     Spawner.encounterT = 90; Spawner.coachT = 30;
   },
 
-  newGame() {
-    this.resetState();
-    Spawner.initWorld();
-    G.player = new Player();
-    MissionSys.placeGivers();
-    this.snapCamera();
-    G.state = 'play'; UI.enterGame(); UI.fade(1.5);
+  async newGame() {
+    if (this.busy) return;
+    await this.withLoading('Riding into Dustwater...', () => {
+      this.resetState();
+      Spawner.initWorld();
+      G.player = new Player();
+      MissionSys.placeGivers();
+      this.snapCamera();
+    });
+    G.state = 'play'; this.snapCamera(); UI.enterGame(); UI.fade(1.5);
     G.region = World.regionAt(G.player.x, G.player.y);
     setTimeout(() => UI.dialogue([
       { who: 'Dustwater, 1893', text: "The 4:10 from Abilene hisses to a stop. You step onto the platform with a near-empty revolver, twenty-five dollars, and a telegram." },
@@ -100,9 +190,17 @@ const Game = {
     ]), 900);
   },
 
-  load(slot) {
+  async load(slot) {
     const s = SaveSys.read(slot);
     if (!s) { UI.notify('That save could not be read.', 'bad'); return; }
+    if (this.busy) return;
+    await this.withLoading('Loading your saved game...', () => this.applySave(s));
+    G.state = 'play'; this.snapCamera(); UI.enterGame(); UI.fade(1.2);
+    G.region = World.regionAt(G.player.x, G.player.y);
+    UI.notify(`Loaded ${slot === 'auto' ? 'autosave' : 'slot ' + slot}. Day ${Env.day()}, ${Env.clock()}.`, 'good');
+  },
+
+  applySave(s) {
     this.resetState();
     Spawner.initWorld();
     G.player = new Player();
@@ -123,9 +221,6 @@ const Game = {
     if (s.weather) Env.setWeather(s.weather);
     MissionSys.placeGivers();
     this.snapCamera();
-    G.state = 'play'; UI.enterGame(); UI.fade(1.2);
-    G.region = World.regionAt(P.x, P.y);
-    UI.notify(`Loaded ${slot === 'auto' ? 'autosave' : 'slot ' + slot}. Day ${Env.day()}, ${Env.clock()}.`, 'good');
   },
 
   autosave(label) {
