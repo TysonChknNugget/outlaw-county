@@ -1,0 +1,57 @@
+{
+  "name": "outlaw-county",
+  "productName": "Outlaw County",
+  "version": "1.0.0",
+  "description": "A 2D open-world western crime sandbox set in the 1890s frontier.",
+  "main": "electron/main.js",
+  "author": "Outlaw County",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64",
+    "publish-download": "node scripts/publish-download.js",
+    "dist": "electron-builder --win --x64 && node scripts/publish-download.js"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.outlawcounty.game",
+    "productName": "Outlaw County",
+    "copyright": "Copyright © Outlaw County",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "game/**/*",
+      "assets/icon.png",
+      "assets/icon.ico",
+      "package.json"
+    ],
+    "asar": true,
+    "compression": "maximum",
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "zip", "arch": ["x64"] }
+      ],
+      "artifactName": "OutlawCounty-${version}-win-x64.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Outlaw County",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "OutlawCounty-Setup-${version}.${ext}"
+    }
+  }
+}

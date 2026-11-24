@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Outlaw County — A Frontier Crime Sandbox</title>
+  <meta name="description" content="Outlaw County is a 2D open-world western crime sandbox. Rob banks and trains, ride the frontier, and outrun the law in 1890s Dustwater County. Play free in your browser or download for Windows.">
+  <meta property="og:title" content="Outlaw County">
+  <meta property="og:description" content="Rob. Ride. Run. A 2D open-world western crime sandbox.">
+  <meta property="og:image" content="assets/icon.png">
+  <link rel="icon" href="assets/icon.png">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+  <header class="nav" id="nav">
+    <a class="brand" href="#top"><img src="assets/icon.png" alt="" width="34" height="34"><span>Outlaw County</span></a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#world">World</a>
+      <a href="#arsenal">Arsenal</a>
+      <a href="#controls">Controls</a>
+      <a href="#about">About</a>
+    </nav>
+    <a class="btn btn-sm" href="game/index.html">Play Now</a>
+  </header>
+
+  <!-- ============== HERO ============== -->
+  <section class="hero" id="top">
+    <canvas id="hero-canvas" aria-hidden="true"></canvas>
+    <div class="hero-grain"></div>
+    <div class="hero-content">
+      <div class="eyebrow">★ Dustwater County · 1893 ★</div>
+      <h1 class="logo">
+        <span class="logo-the">THE</span>
+        <span class="logo-word">OUTLAW</span>
+        <span class="logo-word">COUNTY</span>
+      </h1>
+      <p class="tagline">Rob the bank. Hold up the express. Ride hard and stay ahead of the law in a sprawling pixel-art frontier where every bullet leaves a witness.</p>
+      <div class="cta">
+        <a class="btn btn-lg" href="game/index.html" id="play-now"><span class="ico">▶</span> Play Now <small>Free · in your browser</small></a>
+        <a class="btn btn-lg btn-dark" href="#" id="download-win"><span class="ico">⬇</span> Download for Windows <small id="dl-sub">Windows 10/11 · 64-bit</small></a>
+      </div>
+      <p class="hero-note">No install, no account. Your progress saves on your own computer.</p>
+    </div>
+    <a class="scroll-hint" href="#intro" aria-label="Scroll down">▾</a>
+  </section>
+
+  <!-- ============== INTRO ============== -->
+  <section class="intro" id="intro">
+    <div class="wrap two-col">
+      <div>
+        <h2 class="section-title">A county with no shortage of trouble</h2>
+        <p class="lead">You stepped off the 4:10 from Abilene with an empty revolver and twenty-five dollars. Boone Hollister's gang needs a steady hand, the railroad needs a lesson, and Sheriff Brannigan needs a reason to hang somebody.</p>
+        <p>Outlaw County is a top-down open-world western built entirely from hand-coded pixel art. Explore two frontier towns, a pine forest, a red-sand desert and a railroad that cuts the county in half. Pick your crimes, earn your bounty and decide how long you can keep running.</p>
+        <ul class="facts">
+          <li><b>5</b> story missions</li>
+          <li><b>6</b> frontier weapons</li>
+          <li><b>5</b> horse breeds</li>
+          <li><b>5</b> wanted levels</li>
+        </ul>
+      </div>
+      <div class="poster">
+        <div class="poster-inner">
+          <div class="poster-head">WANTED</div>
+          <div class="poster-sub">DEAD OR ALIVE</div>
+          <canvas id="poster-canvas" width="96" height="72"></canvas>
+          <div class="poster-name">THE STRANGER FROM ABILENE</div>
+          <div class="poster-crimes">Train robbery · Bank robbery · Horse theft · Jailbreak</div>
+          <div class="poster-reward">$<span id="poster-bounty">5,000</span> REWARD</div>
+          <div class="poster-foot">Apply to Sheriff T. Brannigan, Dustwater</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== FEATURES ============== -->
+  <section class="features" id="features">
+    <div class="wrap">
+      <h2 class="section-title center">Everything an outlaw needs</h2>
+      <p class="section-lead center">Systems that feed into each other: every crime has witnesses, every witness can reach the law, and the law never forgets a face.</p>
+      <div class="feature-grid">
+        <article class="feature"><div class="f-ico">★</div><h3>A law that hunts you</h3><p>Five wanted levels. Lawmen investigate, search your last known position, take cover, call reinforcements and send mounted posses. Break line of sight to slip away — or pay off your bounty at a station.</p></article>
+        <article class="feature"><div class="f-ico">$</div><h3>Rob anything that moves</h3><p>Hold up general stores, stick up stagecoaches, crack the express car on a stopped train, mug a banker in the street or blow the county vault with the Hollister gang.</p></article>
+        <article class="feature"><div class="f-ico">♞</div><h3>Horses with grit</h3><p>Buy, break or steal five breeds. Horses have momentum, stamina and health, follow you when close and come running when you whistle.</p></article>
+        <article class="feature"><div class="f-ico">☀</div><h3>A living frontier</h3><p>A full day and night cycle with lamp-lit streets, campfires and lightning storms. Townsfolk keep daily routines, flee gunfire and run to the sheriff when they see you do wrong.</p></article>
+        <article class="feature"><div class="f-ico">⚑</div><h3>Story missions</h3><p>Five handcrafted jobs, from your first holdup to the County Bank Robbery, with dialogue, objectives, failure conditions and a mission system ready for more.</p></article>
+        <article class="feature"><div class="f-ico">✕</div><h3>Hunt, loot, dig</h3><p>Hunt deer, coyotes and rabbits for pelts. Clear Rattlesnake camps, buy rumors in the saloon and dig up buried caches marked on your map.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== WORLD / SCREENSHOTS ============== -->
+  <section class="world" id="world">
+    <div class="wrap">
+      <h2 class="section-title center">The county</h2>
+      <p class="section-lead center">These views are drawn live by the game's own renderer — the same code you play.</p>
+      <div class="gallery" id="gallery">
+        <figure class="shot big" data-view="dustwater"><canvas></canvas><figcaption><b>Dustwater</b> Saloon, bank, gunsmith, hotel, stables and the sheriff who runs it all.</figcaption></figure>
+        <figure class="shot" data-view="camp"><canvas></canvas><figcaption><b>Hollister Camp</b> The gang's canyon hideout — your respawn point and fence.</figcaption></figure>
+        <figure class="shot" data-view="railroad"><canvas></canvas><figcaption><b>Iron Horse Railroad</b> Trains stop at every station. So can you.</figcaption></figure>
+        <figure class="shot" data-view="desert"><canvas></canvas><figcaption><b>Red Sand Desert</b> Rattlesnake gang camps, mesas and buried treasure.</figcaption></figure>
+        <figure class="shot" data-view="forest"><canvas></canvas><figcaption><b>Pinewood Forest</b> Hunting grounds, trapper cabins and an old silver mine.</figcaption></figure>
+        <figure class="shot" data-view="mesa"><canvas></canvas><figcaption><b>Mesa Flats</b> A dusty adobe town with a trading post ripe for the taking.</figcaption></figure>
+      </div>
+      <div class="map-block">
+        <div class="map-frame"><canvas id="county-map"></canvas></div>
+        <div class="map-text">
+          <h3>One connected map</h3>
+          <p>Roads link every corner of the county: the Dustwater road east across the Sweetwater River, the forest road north to the Silverline Mine, the canyon trail to the Hollister hideout and the long ride south to Mesa Flats.</p>
+          <ul class="legend">
+            <li><i style="background:#2e4628"></i> Pinewood Forest</li>
+            <li><i style="background:#68783c"></i> Coyote Plains</li>
+            <li><i style="background:#cda86e"></i> Red Sand Desert</li>
+            <li><i style="background:#3c6e8c"></i> Sweetwater River</li>
+            <li><i style="background:#3a3030"></i> Railroad</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== ARSENAL ============== -->
+  <section class="arsenal" id="arsenal">
+    <div class="wrap">
+      <h2 class="section-title center">The arsenal</h2>
+      <p class="section-lead center">Every weapon handles differently — thumb the hammer on a single-action, work the lever between rifle shots, or empty both barrels of the coach gun.</p>
+      <div class="weapon-grid" id="weapon-grid"></div>
+    </div>
+  </section>
+
+  <!-- ============== CONTROLS ============== -->
+  <section class="controls" id="controls">
+    <div class="wrap two-col">
+      <div>
+        <h2 class="section-title">Controls</h2>
+        <p>Keyboard and mouse. The game scales to any screen size and supports fullscreen.</p>
+        <div class="keys">
+          <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>Move · steer horse</span></div>
+          <div><kbd>Mouse</kbd><span>Aim</span></div>
+          <div><kbd>Left click</kbd><span>Shoot</span></div>
+          <div><kbd>Right click</kbd><span>Steady aim</span></div>
+          <div><kbd>R</kbd><span>Reload</span></div>
+          <div><kbd>Shift</kbd><span>Sprint · gallop</span></div>
+          <div><kbd>E</kbd><span>Interact · rob · talk</span></div>
+          <div><kbd>F</kbd><span>Mount / dismount</span></div>
+          <div><kbd>H</kbd><span>Whistle for horse</span></div>
+          <div><kbd>Tab</kbd><span>Inventory</span></div>
+          <div><kbd>1</kbd>–<kbd>5</kbd><span>Select weapon</span></div>
+          <div><kbd>M</kbd><span>Map</span></div>
+          <div><kbd>Esc</kbd><span>Pause</span></div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>How the law works</h3>
+        <ol>
+          <li><b>Commit a crime.</b> Lawmen who see it report it on the spot. Civilians run to find one.</li>
+          <li><b>Stop the witness</b> before they reach the sheriff and the crime never happened.</li>
+          <li><b>Get spotted</b> and the hunt begins. The more serious the crime, the bigger the posse.</li>
+          <li><b>Break line of sight.</b> Hide in brush or indoors, or ride far away until the search is called off.</li>
+          <li><b>Clear your name</b> by paying your bounty at a train station or sheriff's office.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== ABOUT ============== -->
+  <section class="about" id="about">
+    <div class="wrap two-col">
+      <div>
+        <h2 class="section-title">About the game</h2>
+        <p>Outlaw County is a love letter to frontier crime stories, built from scratch with HTML5 Canvas and plain JavaScript. No game engine, no external assets: every building, horse, gunshot and campfire is drawn or synthesized by code at runtime.</p>
+        <p>The browser version and the Windows desktop app run the exact same game files. Both work offline and keep your saves on your own machine.</p>
+      </div>
+      <div class="spec">
+        <h3>Specs</h3>
+        <dl>
+          <dt>Genre</dt><dd>Open-world western crime sandbox</dd>
+          <dt>Platforms</dt><dd>Web browser · Windows 10/11 (64-bit)</dd>
+          <dt>Input</dt><dd>Keyboard &amp; mouse</dd>
+          <dt>Saves</dt><dd>3 manual slots + autosave, stored locally</dd>
+          <dt>Size</dt><dd>About 320 KB of game code (browser)</dd>
+          <dt>Price</dt><dd>Free</dd>
+        </dl>
+        <div class="cta small">
+          <a class="btn" href="game/index.html">Play Now</a>
+          <a class="btn btn-dark" href="#" data-download>Download for Windows</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="wrap foot">
+      <div class="brand"><img src="assets/icon.png" alt="" width="28" height="28"><span>Outlaw County</span></div>
+      <p>© <span id="year">2026</span> Outlaw County. All rights reserved. A work of fiction — any resemblance to real outlaws is purely coincidental.</p>
+      <nav><a href="#top">Back to top</a><a href="game/index.html">Play</a></nav>
+    </div>
+  </footer>
+
+  <!-- download help dialog -->
+  <dialog id="dl-dialog">
+    <form method="dialog">
+      <h3>The Windows build isn't published here yet</h3>
+      <p>This copy of the website doesn't include the packaged installer. Whoever hosts the site builds it once with Node.js and drops it into the <code>downloads/</code> folder — then this button downloads it directly.</p>
+      <ol>
+        <li>Install <b>Node.js 18+</b>.</li>
+        <li>In the project folder run <code>npm install</code></li>
+        <li>Then run <code>npm run dist</code></li>
+      </ol>
+      <p>That builds <code>dist/OutlawCounty-Setup-1.0.0.exe</code> and a portable ZIP, copies both into <code>downloads/</code> and updates <code>downloads/manifest.js</code> so this button points at them. See <code>README.md</code> for details.</p>
+      <p>Until then you can <a href="game/index.html">play in your browser</a> — it's the same game.</p>
+      <div class="dlg-btns"><button class="btn">Got it</button></div>
+    </form>
+  </dialog>
+
+  <script src="downloads/manifest.js"></script>
+  <script src="game/js/util.js"></script>
+  <script src="game/js/data.js"></script>
+  <script src="game/js/world.js"></script>
+  <script src="game/js/sprites.js"></script>
+  <script src="js/site.js"></script>
+</body>
+</html>
