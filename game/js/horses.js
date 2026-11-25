@@ -34,7 +34,9 @@ const Horses = {
     if (/Ranch|Granger|Cottonwood/.test(r)) return pick(['nokota', 'nokota', 'mustang', 'quarter']);
     if (/Frost|Silver/.test(r)) return pick(['appaloosa', 'mustang', 'nag']);
     if (/Salt|Hollow|Badlands|Last Water/.test(r)) return pick(['mustang', 'mustang', 'nag', 'appaloosa']);
-    if (/Rio|San Lucero/.test(r)) return pick(['mustang', 'mule', 'andalusian', 'mustang']);
+    if (/Rio|San Lucero|Sonora|Barranca|Costa|Santa Rosa|Puerto/.test(r)) return pick(['mustang', 'mule', 'andalusian', 'mustang']);
+    if (/Sierra Madre|Real de Plata/.test(r)) return pick(['mule', 'appaloosa', 'mustang']);
+    if (/Valle|Laguna|Hacienda|San Isidro/.test(r)) return pick(['andalusian', 'quarter', 'mustang', 'andalusian']);
     if (/Canyon|Rattlesnake/.test(r)) return pick(['mustang', 'appaloosa', 'nag']);
     return pick(['mustang', 'mustang', 'nag', 'morgan']);
   },

@@ -276,7 +276,7 @@ const Events = {
  * The map starts hidden outside the original county. Riding around uncovers it in
  * 8×8-tile cells; the first visit to a settlement announces it. */
 const Discovery = {
-  CW: 160, CHh: 120, CELL: 8, t: 0, fog: null, dirty: true,
+  CW: 160, CHh: 240, CELL: 8, t: 0, fog: null, dirty: true,
   fresh() {
     const a = new Uint8Array(this.CW * this.CHh);
     for (let y = 0; y < 30; y++) for (let x = 0; x < 40; x++) a[y * this.CW + x] = 1;   // the home county is known

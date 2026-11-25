@@ -15,6 +15,7 @@ const MUSIC_THEMES = {
   canyon:   { name: 'Red Rock Drone', bpm: 76, steps: 16, scale: [0, 1, 4, 5, 7, 8, 10, 12], roots: [52, 52, 53, 52, 50, 52, 53, 52], lead: 'pluck', dens: 0.34, bass: 'tom', oct: 12 },
   salt:     { name: 'Bonewhite Whistle', bpm: 58, steps: 16, scale: [0, 3, 5, 6, 7, 10, 12], roots: [54, 54, 54, 52, 54, 54, 57, 54], lead: 'whistle', dens: 0.17, bass: 'drone', oct: 24 },
   badlands: { name: 'Badlands Harp', bpm: 80, steps: 16, scale: [0, 3, 5, 7, 10, 12, 15], roots: [52, 52, 55, 57, 52, 50, 55, 52], lead: 'reed', dens: 0.4, bass: 'boom', oct: 12 },
+  mexico:   { name: 'Mariachi del Sur', bpm: 116, steps: 12, scale: [0, 2, 4, 5, 7, 9, 11, 12, 14], roots: [57, 57, 52, 57, 62, 57, 52, 57], lead: 'brass', dens: 0.55, bass: 'waltz', oct: 12 },
   border:   { name: 'Rio Bravo Strum', bpm: 100, steps: 12, scale: [0, 1, 4, 5, 7, 8, 10, 12], roots: [52, 52, 57, 53, 52, 52, 50, 52], lead: 'strum', dens: 0.48, bass: 'waltz', oct: 12 }
 };
 
@@ -29,6 +30,7 @@ const Music = {
     if (/Canyon|Rattlesnake/.test(r)) return 'canyon';
     if (/Salt|Hollow|Bonewhite/.test(r)) return 'salt';
     if (/Badlands|Last Water/.test(r)) return 'badlands';
+    if (/Santa Rosa|Real de Plata|San Isidro|Valle de Oro|Puerto Dorado|Sonora|Sierra Madre|Barranca|Laguna|Costa Dorada|Hacienda|Cortés/.test(r)) return 'mexico';
     if (/Rio|San Lucero|Bravo/.test(r)) return 'border';
     return 'county';
   },
@@ -62,6 +64,7 @@ const Music = {
     bell: (o, t, f, v) => { S.tone(o, t, f, 1.6, v * 0.8, 'sine', f); S.tone(o, t, f * 2.01, 0.9, v * 0.25, 'sine', f * 2.01); },
     reed: (o, t, f, v) => { S.tone(o, t, f, 0.42, v * 0.38, 'square', f * 0.995); S.tone(o, t, f * 1.006, 0.42, v * 0.2, 'triangle', f); },
     whistle: (o, t, f, v) => { S.tone(o, t, f * 0.985, 1.1, v * 0.7, 'sine', f); },
+    brass: (o, t, f, v) => { S.tone(o, t, f, 0.32, v * 0.42, 'sawtooth', f); S.tone(o, t + 0.005, f * 1.5, 0.28, v * 0.22, 'square', f * 1.5); S.pluck(o, t, f / 2, 0.4, v * 0.5); },
     strum: (o, t, f, v) => { for (let i = 0; i < 3; i++) S.pluck(o, t + i * 0.018, f * [1, 1.26, 1.5][i], 0.6, v * 0.7); }
   };
   S.musicStep = function (t, step, dur) {

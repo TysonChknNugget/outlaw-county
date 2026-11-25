@@ -36,7 +36,7 @@ const Looks = {
     const reg = town || World.regionAt(x, y) || '';
     const woman = chance(0.38), f = this.face();
     const style = /Silver Crown|Frostpeak/.test(reg) ? 'miner' : /Harlow/.test(reg) ? 'port' : /Granger|Cottonwood|Ranch/.test(reg) ? 'ranch'
-      : /San Lucero|Rio Bravo/.test(reg) ? 'border' : /Hollow|Salt|Last Water|Badlands/.test(reg) ? 'drifter' : 'town';
+      : /San Lucero|Rio Bravo|Santa Rosa|Real de Plata|San Isidro|Valle de Oro|Puerto Dorado|Sonora|Sierra Madre|Barranca|Laguna|Costa Dorada|Hacienda/.test(reg) ? 'border' : /Hollow|Salt|Last Water|Badlands/.test(reg) ? 'drifter' : 'town';
     if (woman) {
       const p = { skin: f.skin, hair: f.hair, shirt: pick(CLOTH.shirt), dress: pick(CLOTH.dress), hatType: chance(0.5) ? 'bonnet' : 'none', hat: pick(['#e8dcc0', '#4a6a8a', '#8a6a7a', '#d8c8a0']) };
       if (style === 'border') { p.hatType = 'none'; p.dress = pick(['#a04a2a', '#c8a040', '#3a6a4a', '#e6e0d0']); p.shawl = pick(CLOTH.bright); }

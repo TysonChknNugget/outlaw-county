@@ -293,7 +293,13 @@ const UI = {
     };
     // region names
     const regions = [['Frostpeak Mountains', 800, 30], ['Harlow Lake', 1110, 18], ['Ranch Country', 420, 270], ['Red Canyonlands', 1000, 260], ['Bonewhite Salt Flats', 330, 540], ['Mesa Badlands', 960, 520], ['Rio Bravo', 1000, 772],
-      ['Pinewood Forest', 60, 30], ['Red Sand Desert', 220, 200], ['Coyote Plains', 60, 180]];
+      ['Pinewood Forest', 60, 30], ['Red Sand Desert', 220, 200], ['Coyote Plains', 60, 180]].concat(World.H > 1000 ? [['Desierto de Sonora', 300, 1000], ['Sierra Madre', 1000, 1100], ['Barranca del Diablo', 260, 1180], ['Valle de Oro', 520, 1460], ['Laguna Verde', 1120, 1480], ['Costa Dorada', 700, 1760], ['Mar de Cortés', 700, 1880]] : []);
+    if (World.H > 1000) {   // the border, and which country is which
+      const by = py(MEX_Y * TS);
+      g.strokeStyle = 'rgba(120,30,20,.55)'; g.lineWidth = 2; g.setLineDash([10, 6]); g.beginPath(); g.moveTo(Math.max(0, px(0)), by); g.lineTo(Math.min(c.width, px(World.W * TS)), by); g.stroke(); g.setLineDash([]);
+      g.font = `bold ${Math.round(fs * 1.8)}px Georgia, serif`; g.textAlign = 'center'; g.fillStyle = 'rgba(60,30,20,.45)';
+      const mx = px(World.W * TS * 0.25); g.fillText('UNITED STATES', mx, by - 12); g.fillText('MÉXICO', mx, by + Math.round(fs * 1.8) + 8);
+    }
     const close = z >= 1.2;
     for (const [n, tx, ty] of regions.slice(0, close ? 10 : 7)) if (seen(tx * TS, ty * TS)) label(n, px(tx * TS), py(ty * TS), '#4a3a22', Math.round(fs * 1.1));
     for (const t of World.towns) if (G.world.discovered.includes(t.name) || seen((t.x0 + t.x1) / 2 * TS, (t.y0 + t.y1) / 2 * TS)) label(t.name, px((t.x0 + t.x1) / 2 * TS), py(t.y0 * TS) - 4);

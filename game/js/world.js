@@ -48,7 +48,7 @@ const World = {
   /* opts.lite = only the original 320x240 county (used by the website previews) */
   generate(seed = 1889, opts = {}) {
     const lite = !!opts.lite, OW = 320, OH = 240;
-    this.W = lite ? OW : 1280; this.H = lite ? OH : 960;
+    this.W = lite ? OW : 1280; this.H = lite ? OH : (this.generateMexico ? 1920 : 960);   // v2.7: Mexico doubles the map's height
     this.OW = OW; this.OH = OH; this.lite = lite;
     const W = this.W, H = this.H;
     this.props = []; this.buildings = []; this.chunkCache = new Map();
@@ -271,6 +271,7 @@ const World = {
 
     // the six frontier regions around the original county (world-frontier.js)
     if (!lite) this.generateFrontier(seed);
+    if (!lite && this.generateMexico) this.generateMexico(seed);
 
     // 11. solidity from tiles
     for (let i = 0; i < W * H; i++) {

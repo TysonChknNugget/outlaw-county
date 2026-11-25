@@ -16,7 +16,10 @@ const FISH = {
   sturgeon: { name: 'Harlow Sturgeon', sell: 90, diff: 0.9, color: '#5a5a6a', legend: true },
   catfish: { name: 'Channel Catfish', sell: 10, diff: 0.45, color: '#6a5a4a' },
   gar: { name: 'Longnose Gar', sell: 13, diff: 0.6, color: '#8a8a5a' },
-  leviathan: { name: 'Old Whiskers (giant catfish)', sell: 80, diff: 0.92, color: '#3a3a2a', legend: true }
+  leviathan: { name: 'Old Whiskers (giant catfish)', sell: 80, diff: 0.92, color: '#3a3a2a', legend: true },
+  snapper: { name: 'Red Snapper', sell: 12, diff: 0.4, color: '#d85a4a' },
+  dorado: { name: 'Dorado', sell: 18, diff: 0.62, color: '#c8d040' },
+  marlin: { name: 'El Rey (blue marlin)', sell: 140, diff: 0.95, color: '#2a5a9a', legend: true }
 };
 ITEMS.rod = { name: 'Fishing Rod', type: 'tool', price: 25, sell: 6, desc: 'Stand at the water and press E to fish.' };
 for (const [k, f] of Object.entries(FISH)) { ITEMS['fish_' + k] = { name: f.name, type: 'pelt', sell: f.sell, desc: f.legend ? 'A legendary catch. Worth a fortune.' : 'Fresh fish. General stores and trappers buy it.' }; ITEM_ORDER.push('fish_' + k); }
@@ -34,7 +37,9 @@ const Fishing = {
     const r = World.regionAt(x, y) || '';
     if (/Frost|Silver/.test(r)) return [['trout', 60], ['char', 36], ['goldtrout', 4]];
     if (/Harlow|Port/.test(r)) return [['perch', 55], ['pike', 42], ['sturgeon', 3]];
-    if (/Rio|San Lucero|Badlands/.test(r) || y > 760 * TS) return [['catfish', 55], ['gar', 42], ['leviathan', 3]];
+    if (/Cortés|Costa|Puerto/.test(r) || (typeof MEX_Y !== 'undefined' && y > 1780 * TS)) return [['snapper', 55], ['dorado', 42], ['marlin', 3]];
+    if (/Laguna/.test(r)) return [['bass', 50], ['catfish', 47], ['leviathan', 3]];
+    if (/Rio|San Lucero|Badlands|Barranca/.test(r) || y > 760 * TS) return [['catfish', 55], ['gar', 42], ['leviathan', 3]];
     return [['bluegill', 60], ['bass', 40]];
   },
   roll(pool) { let n = Math.random() * pool.reduce((a, b) => a + b[1], 0); for (const [k, w] of pool) { if ((n -= w) <= 0) return k; } return pool[0][0]; },
