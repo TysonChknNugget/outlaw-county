@@ -201,13 +201,14 @@ const Sprites = {
       ctx.restore(); return;
     }
     this.shadow(ctx, x, y, 12, 3);
-    ctx.save(); ctx.translate(x, y); ctx.scale(s, 1);
+    ctx.save(); ctx.translate(x, y); ctx.scale(s * (o.big ? 1.15 : 1), o.big ? 1.15 : 1);
     const sp = o.speed || 0, ph = o.animT * (6 + sp * 10);
     const legs = [[-8, 0], [-5, 1.6], [5, 3.1], [8, 4.7]];
     for (const [lx, off] of legs) {
       const sw = sp > 0.02 ? Math.sin(ph + off) * (1 + sp * 2.5) : 0;
       const lift = sp > 0.02 ? Math.max(0, Math.cos(ph + off)) * (1 + sp * 2) : 0;
       R(ctx, lx < 0 ? this.shade(c, -20) : c, Math.round(lx + sw), -7, 2, 7 - Math.round(lift));
+      if (o.socks) R(ctx, '#efe8dc', Math.round(lx + sw), -3 - Math.round(lift), 2, 2);
       R(ctx, '#1a1410', Math.round(lx + sw), -1 - Math.round(lift), 2, 1);
     }
     const bob = sp > 0.3 ? Math.round(Math.sin(ph * 2) * 0.8) : 0;
@@ -217,11 +218,16 @@ const Sprites = {
     // body
     R(ctx, c, -10, -13 + bob, 19, 7); R(ctx, this.shade(c, -25), -9, -7 + bob, 17, 1); R(ctx, this.shade(c, 18), -9, -13 + bob, 17, 1);
     if (o.pinto) { R(ctx, '#efe6d8', -6, -12 + bob, 5, 4); R(ctx, '#efe6d8', 2, -10 + bob, 4, 3); }
+    if (o.pattern === 'blanket') { R(ctx, '#f0e8dc', -10, -13 + bob, 8, 6); for (const [px, py] of [[-9, -12], [-6, -10], [-4, -12], [-8, -9], [-3, -9]]) R(ctx, '#3a2a1a', px, py + bob, 1, 1); }
+    if (o.pattern === 'dapple') for (const [px, py] of [[-8, -11], [-5, -12], [-2, -10], [1, -12], [4, -11], [-6, -9], [2, -9]]) R(ctx, this.shade(c, 22), px, py + bob, 2, 1);
+    if (o.pattern === 'roan') for (let px = -9; px < 8; px += 2) R(ctx, this.shade(c, 35), px, -12 + bob + (px & 2 ? 2 : 0), 1, 1);
     // neck & head
     const hb = sp > 0.3 ? Math.round(Math.sin(ph * 2 + 1)) : Math.round(Math.sin(o.animT * 0.8) * 0.5);
     R(ctx, c, 6, -17 + bob, 4, 6); R(ctx, c, 8, -20 + bob + hb, 4, 4); R(ctx, c, 11, -19 + bob + hb, 4, 3);
     R(ctx, this.shade(c, -30), 14, -18 + bob + hb, 2, 2); R(ctx, '#111', 10, -19 + bob + hb, 1, 1);
     R(ctx, c, 8, -21 + bob + hb, 1, 1); R(ctx, dark, 5, -18 + bob, 2, 6); R(ctx, dark, 6, -20 + bob + hb, 2, 2);
+    if (o.pattern === 'blaze') R(ctx, '#f0e8dc', 12, -19 + bob + hb, 2, 1);
+    if (o.mule) { R(ctx, this.shade(c, -20), 8, -24 + bob + hb, 1, 4); R(ctx, this.shade(c, -20), 10, -24 + bob + hb, 1, 4); }
     if (o.saddle) {
       R(ctx, '#8a2a20', -4, -13 + bob, 7, 3); R(ctx, '#5a3418', -3, -14 + bob, 5, 2); R(ctx, '#3a2010', 1, -16 + bob, 1, 2);
       R(ctx, '#5a3418', -6, -12 + bob, 2, 4);

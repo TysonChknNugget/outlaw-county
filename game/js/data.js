@@ -101,7 +101,26 @@ const HORSE_BREEDS = {
   mustang: { name: 'Pinto Mustang', speed: 140, sprint: 225, stamina: 110, hp: 120, accel: 170, turn: 3.6, price: 75, coats: ['#8b5a2b', '#e8dcc8', '#6b3e1f'] },
   morgan: { name: 'Morgan', speed: 150, sprint: 240, stamina: 140, hp: 160, accel: 160, turn: 3.2, price: 150, coats: ['#3b2416', '#5a3418'] },
   quarter: { name: 'Quarter Horse', speed: 165, sprint: 270, stamina: 125, hp: 140, accel: 220, turn: 3.8, price: 260, coats: ['#a0522d', '#c08040'] },
-  arabian: { name: 'Arabian', speed: 175, sprint: 300, stamina: 170, hp: 130, accel: 200, turn: 4.2, price: 450, coats: ['#e6e1d8', '#2a2a2a'] }
+  arabian: { name: 'Arabian', speed: 175, sprint: 300, stamina: 170, hp: 130, accel: 200, turn: 4.2, price: 450, coats: ['#e6e1d8', '#2a2a2a'], patterns: ['dapple', null] },
+  // v2.3
+  mule: { name: 'Mule', speed: 125, sprint: 185, stamina: 220, hp: 150, accel: 140, turn: 3.4, price: 60, coats: ['#6a5848', '#4a3a2e', '#8a7a66'], surefoot: true, mule: true,
+    trait: 'Sure-footed: snow and river fords never slow it down.' },
+  draft: { name: 'Shire Draft', speed: 120, sprint: 195, stamina: 200, hp: 260, accel: 110, turn: 2.6, price: 220, coats: ['#2a1a10', '#5a3418', '#1a1a1a'], brave: true, big: true, socks: 0.9,
+    trait: 'Brave and enormous: takes 40% less damage.' },
+  walker: { name: 'Tennessee Walker', speed: 158, sprint: 248, stamina: 180, hp: 140, accel: 170, turn: 3.8, price: 280, coats: ['#3a2416', '#7a4a26', '#1a1410'], smooth: true, socks: 0.4,
+    trait: 'Smooth gait: your aim stays steadier in the saddle.' },
+  appaloosa: { name: 'Appaloosa', speed: 155, sprint: 255, stamina: 150, hp: 145, accel: 190, turn: 4.0, price: 320, coats: ['#e8dcc8', '#8a5a3a', '#5a4030'], patterns: ['blanket'], surefoot: true,
+    trait: 'Sure-footed: snow and river fords never slow it down.' },
+  foxtrotter: { name: 'Missouri Fox Trotter', speed: 160, sprint: 252, stamina: 190, hp: 135, accel: 180, turn: 3.9, price: 340, coats: ['#a0522d', '#6a3a1a', '#c8a070'], tireless: true, patterns: ['blaze', null],
+    trait: 'Tireless: galloping drains 35% less stamina.' },
+  thoroughbred: { name: 'Thoroughbred', speed: 182, sprint: 322, stamina: 115, hp: 110, accel: 235, turn: 3.6, price: 600, coats: ['#5a2a14', '#2a1a10', '#8a4a20'], patterns: ['blaze'], socks: 0.6,
+    trait: 'The fastest horse money can buy, but it tires quickly.' },
+  andalusian: { name: 'Andalusian', speed: 172, sprint: 290, stamina: 165, hp: 175, accel: 210, turn: 4.4, price: 700, coats: ['#d8d4cc', '#9a9a9a', '#2a2a2a'], patterns: ['dapple'], brave: true,
+    trait: 'Fast, nimble and brave: takes 40% less damage.' },
+  nokota: { name: 'Nokota', speed: 162, sprint: 272, stamina: 170, hp: 160, accel: 200, turn: 4.0, price: 0, wildOnly: true, coats: ['#6a6a78', '#4a3a2e', '#8a7a66'], patterns: ['roan'], surefoot: true, socks: 0.5,
+    trait: 'A wild breed of Ranch Country. Can only be caught and broken.' },
+  ghost: { name: 'The Bonewhite Ghost', speed: 192, sprint: 335, stamina: 230, hp: 220, accel: 240, turn: 4.5, price: 0, wildOnly: true, legendary: true, coats: ['#f4f0e8'], patterns: ['dapple'], surefoot: true, tireless: true, brave: true,
+    trait: 'A legend of the salt flats. Fast, tireless, sure-footed and brave.' }
 };
 const HORSE_NAMES = ['Dusty', 'Buck', 'Whiskey', 'Ghost', 'Ranger', 'Pepper', 'Sable', 'Cinder', 'Copper', 'Blaze', 'Shiloh', 'Jasper', 'Duke', 'Maverick'];
 

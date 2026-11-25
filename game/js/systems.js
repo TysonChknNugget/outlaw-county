@@ -333,7 +333,7 @@ const Economy = {
     return null;
   },
   entries(shopId) {
-    const shop = Object.assign({ id: shopId }, SHOPS[shopId]), stock = SHOP_STOCK[shop.type], P = G.player, out = [];
+    const shop = Object.assign({ id: shopId }, SHOPS[shopId]), stock = SHOP_STOCK[shopId] || SHOP_STOCK[shop.type], P = G.player, out = [];
     const pm = Progress.priceMul(), cost = p => Math.max(1, Math.round(p * pm));
     for (const s of stock.buy) {
       if (s === 'bounties') { out.push(...Bounties.shopEntries()); continue; }
@@ -352,7 +352,7 @@ const Economy = {
         const hb = HORSE_BREEDS[key];
         const trade = P.horse && !P.horse.dead ? Math.floor((P.horse.def.price || 30) * 0.4) : 0;
         const cost = Math.max(0, Math.round(hb.price * pm) - trade);
-        out.push({ name: hb.name, desc: `Speed ${hb.speed} · Sprint ${hb.sprint} · Stamina ${hb.stamina} · Health ${hb.hp}`, price: cost, note: trade ? `Includes $${trade} trade-in` : '', can: P.money >= cost && !(P.horse && P.horse.breed === key && !P.horse.dead && P.horse.def.price), reason: null,
+        out.push({ name: hb.name, desc: `Speed ${hb.speed} · Sprint ${hb.sprint} · Stamina ${hb.stamina} · Health ${hb.hp}${hb.trait ? ' · ' + hb.trait : ''}`, price: cost, note: trade ? `Includes $${trade} trade-in` : '', can: P.money >= cost && !(P.horse && P.horse.breed === key && !P.horse.dead && P.horse.def.price), reason: null,
           buy: () => { P.money -= cost; Economy.giveHorse(key); } });
       } else if (kind === 'service') {
         let sv = SERVICES[key];

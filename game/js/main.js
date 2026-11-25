@@ -25,7 +25,7 @@ const SaveSys = {
       player: { x: P.x, y: P.y, hp: P.hp, money: P.money, owned: P.owned, mag: P.mag, ammo: P.ammo, cur: P.cur, inv: P.inv, mounted: !!P.mounted,
         xp: P.xp, level: P.level, perkPoints: P.perkPoints, perks: P.perks, nerve: P.nerve, throwSel: P.throwSel },
       bounties: Bounties.save(),
-      horse: h ? { breed: h.breed, name: h.name, coat: h.coat, pinto: h.pinto, hp: h.hp, x: h.x, y: h.y } : null,
+      horse: h ? { breed: h.breed, name: h.name, coat: h.coat, pinto: h.pinto, pattern: h.pattern, socks: h.socks, mane: h.mane, hp: h.hp, x: h.x, y: h.y } : null,
       law: { bounty: Law.bounty },
       missions: { completed: MissionSys.completed, flags: MissionSys.flags },
       world: Object.assign({}, G.world, { explored: Discovery.encode(G.world.explored || Discovery.fresh()), camps: World.banditCamps.map(c => c.members.length && c.members.every(m => m.dead) ? (c.clearedAt >= 0 ? c.clearedAt : G.time) : -1) }),
@@ -225,7 +225,7 @@ const Game = {
     Progress.apply(); P.hp = Math.min(sp.hp, P.maxHp);
     Bounties.load(s.bounties);
     if (s.horse) {
-      const h = new Horse(s.horse.breed, s.horse.x, s.horse.y, { owner: 'player', name: s.horse.name, coat: s.horse.coat, pinto: s.horse.pinto });
+      const h = new Horse(s.horse.breed, s.horse.x, s.horse.y, { owner: 'player', name: s.horse.name, coat: s.horse.coat, pinto: s.horse.pinto, pattern: s.horse.pattern, socks: s.horse.socks, mane: s.horse.mane });
       h.hp = s.horse.hp; h.saddle = true; G.horses.push(h); P.horse = h;
       if (sp.mounted) { h.x = P.x; h.y = P.y; P.mount(h); }
     }

@@ -368,7 +368,7 @@ class Player extends Ent {
     this.mag[this.cur]--;
     const a = this.face;
     let sm = 1;
-    if (this.moving) sm *= 1.5; if (this.mounted) sm *= w.mountedSteady ? 1.1 : 1.35; sm *= Arsenal.spreadMul(this.cur); if (this.sprinting) sm *= 1.5; if (Input.mouse.rdown) sm *= 0.55;
+    if (this.moving) sm *= 1.5; if (this.mounted) sm *= (w.mountedSteady ? 1.1 : 1.35) * (this.mounted.def.smooth ? 0.75 : 1); sm *= Arsenal.spreadMul(this.cur); if (this.sprinting) sm *= 1.5; if (Input.mouse.rdown) sm *= 0.55;
     if (Combat.nervesOn) sm *= 0.4;
     const crit = this.steady >= 1;
     if (crit) sm *= 0.3;
@@ -986,7 +986,7 @@ class Actor extends Ent {
     if (big) { ctx.save(); ctx.translate(this.x, this.y); ctx.scale(1.25, 1.25); ctx.translate(-this.x, -this.y); }
     if (this.mounted) {
       const h = this.mounted;
-      Sprites.horse(ctx, this.x, this.y, { face: h.heading, animT: h.animT, speed: Math.min(1, h.speed / 200), coat: h.coat, mane: h.mane, saddle: true, pinto: h.pinto });
+      Sprites.horse(ctx, this.x, this.y, { face: h.heading, animT: h.animT, speed: Math.min(1, h.speed / 200), coat: h.coat, mane: h.mane, saddle: true, pinto: h.pinto, pattern: h.pattern, socks: h.socks, big: h.def.big, mule: h.def.mule });
       Sprites.human(ctx, this.x - Math.cos(h.heading), this.y - 9, o);
     } else if (this.knockedOut) {
       // out cold: lying down without the blood pool
@@ -1008,6 +1008,9 @@ class Horse extends Ent {
     this.name = o.name || pick(HORSE_NAMES); this.coat = o.coat || pick(this.def.coats);
     this.mane = Sprites.shade(this.coat, -70);
     this.pinto = o.pinto !== undefined ? o.pinto : (breed === 'mustang' && this.coat !== '#e8dcc8' && chance(0.7));
+    this.pattern = o.pattern !== undefined ? o.pattern : (this.def.patterns ? pick(this.def.patterns) : null);
+    this.socks = o.socks !== undefined ? o.socks : chance(this.def.socks || 0.15);
+    if (o.mane) this.mane = o.mane; else if (this.def.legendary) this.mane = '#d8d0c0';
     this.owner = o.owner || 'wild'; this.maxHp = this.hp = this.def.hp; this.maxSt = this.stamina = this.def.stamina;
     this.heading = this.face = o.face !== undefined ? o.face : rand(TAU); this.speed = 0;
     this.rider = null; this.saddle = this.owner !== 'wild'; this.home = { x, y };
@@ -1030,7 +1033,7 @@ class Horse extends Ent {
     }
     const acc = target > this.speed ? d.accel : 240;
     this.speed += clamp(target - this.speed, -acc * dt, acc * dt);
-    if (sprint && len && target === d.sprint) this.stamina -= 20 * dt * (this.rider === G.player && Progress.has('horseman') ? 0.6 : 1);
+    if (sprint && len && target === d.sprint) this.stamina -= 20 * dt * (this.rider === G.player && Progress.has('horseman') ? 0.6 : 1) * (d.tireless ? 0.65 : 1);
     else this.stamina += (this.speed < 10 ? 16 : 8) * dt;
     this.stamina = clamp(this.stamina, 0, this.maxSt);
     if (this.stamina <= 0 && !this.exhausted) { this.exhausted = true; Sound.play('neigh', this.x, this.y, 0.6); Floaters.add(this.x, this.y - 26, this.name + ' is winded', '#ffd27a'); }
@@ -1038,7 +1041,7 @@ class Horse extends Ent {
     this.runPhysics(dt);
   }
   runPhysics(dt) {
-    const tm = World.terrainMul(this.x, this.y), vx = Math.cos(this.heading) * this.speed * tm, vy = Math.sin(this.heading) * this.speed * tm;
+    const tm = this.def.surefoot ? Math.max(0.97, World.terrainMul(this.x, this.y)) : World.terrainMul(this.x, this.y), vx = Math.cos(this.heading) * this.speed * tm, vy = Math.sin(this.heading) * this.speed * tm;
     const ox = this.x, oy = this.y;
     this.move(vx * dt, vy * dt);
     const md = dist(ox, oy, this.x, this.y);
@@ -1095,6 +1098,7 @@ class Horse extends Ent {
   onScreen() { return Game.onScreen(this.x, this.y, 20); }
   hurt(dmg, src) {
     if (this.dead) return;
+    if (this.def.brave) dmg *= 0.6;
     this.hp -= dmg; this.hurtT = 0.25;
     FX.impact(this.x, this.y - 9, 'blood', 0);
     if (chance(0.5)) Sound.play('neigh', this.x, this.y, 0.7);
@@ -1107,7 +1111,7 @@ class Horse extends Ent {
     }
   }
   draw(ctx) {
-    Sprites.horse(ctx, this.x, this.y, { face: this.heading, animT: this.animT, speed: Math.min(1, this.speed / 200), coat: this.coat, mane: this.mane, saddle: this.saddle, pinto: this.pinto, dead: this.dead, hurt: this.hurtT });
+    Sprites.horse(ctx, this.x, this.y, { face: this.heading, animT: this.animT, speed: Math.min(1, this.speed / 200), coat: this.coat, mane: this.mane, saddle: this.saddle, pinto: this.pinto, pattern: this.pattern, socks: this.socks, big: this.def.big, mule: this.def.mule, dead: this.dead, hurt: this.hurtT });
     if (this.rider === G.player && !this.dead) G.player.drawMounted(ctx, this.x, this.y);
   }
 }
