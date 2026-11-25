@@ -10,6 +10,10 @@ const TS = 16; // world tile size in pixels
  * reload: 'single' loads one round at a time (interruptible by firing),
  *         'full' swaps the whole load at once. */
 const WEAPONS = {
+  fists: {
+    name: 'Fists', slot: 1, melee: true, nonlethal: true, dmg: 17, rate: 0.36, range: 16, accuracy: 1,
+    price: 0, desc: 'Knocks a man cold instead of killing him. Perfect for bringing bounties in alive.', len: 2
+  },
   knife: {
     name: 'Bowie Knife', slot: 1, melee: true, dmg: 48, rate: 0.42, range: 20, accuracy: 1,
     price: 0, desc: 'Quiet and fast. Never runs dry.', len: 4
@@ -45,7 +49,7 @@ const WEAPONS = {
     desc: 'Seven-shot tube magazine. Fast follow-ups at rifle range.'
   }
 };
-const WEAPON_ORDER = ['knife', 'sa', 'da', 'lever', 'shotgun', 'repeater'];
+const WEAPON_ORDER = ['fists', 'knife', 'sa', 'da', 'lever', 'shotgun', 'repeater'];
 
 const AMMO = {
   revolver: { name: 'Revolver Cartridges', box: 24, price: 6, max: 120 },
@@ -59,7 +63,8 @@ const ITEMS = {
   tonic: { name: 'Snake Oil Tonic', type: 'use', price: 16, sell: 6, heal: 20, stamina: 100, desc: 'Restores 20 health and all stamina.' },
   whiskey: { name: 'Whiskey', type: 'use', price: 4, sell: 1, heal: 12, desc: 'Restores 12 health. Steadies the nerves.' },
   oats: { name: 'Horse Oats', type: 'use', price: 5, sell: 2, horse: 60, desc: 'Restores 60 health and full stamina to your horse.' },
-  dynamite: { name: 'Dynamite', type: 'tool', price: 0, sell: 0, desc: 'Handed out for special jobs.' },
+  dynamite: { name: 'Dynamite', type: 'throw', price: 14, sell: 4, desc: 'Press G to throw. Short fuse, big bang.' },
+  firebottle: { name: 'Fire Bottle', type: 'throw', price: 9, sell: 3, desc: 'Press G to throw. Leaves a patch of fire for a few seconds.' },
   pelt_rabbit: { name: 'Rabbit Pelt', type: 'pelt', sell: 4, desc: 'Soft and small.' },
   pelt_coyote: { name: 'Coyote Pelt', type: 'pelt', sell: 9, desc: 'Mangy but sellable.' },
   pelt_deer: { name: 'Deer Hide', type: 'pelt', sell: 14, desc: 'A fine hide.' },
@@ -68,7 +73,24 @@ const ITEMS = {
   gold_bar: { name: 'Gold Bar', type: 'stolen', sell: 140, desc: 'Stamped by the county bank.' },
   treasure_map: { name: 'Treasure Map', type: 'map', sell: 0, desc: 'Marks a buried cache on your map.' }
 };
-const ITEM_ORDER = ['bandage', 'tonic', 'whiskey', 'oats', 'pelt_rabbit', 'pelt_coyote', 'pelt_deer', 'jewelry', 'watch', 'gold_bar', 'treasure_map', 'dynamite'];
+const ITEM_ORDER = ['bandage', 'tonic', 'whiskey', 'oats', 'pelt_rabbit', 'pelt_coyote', 'pelt_deer', 'jewelry', 'watch', 'gold_bar', 'treasure_map', 'dynamite', 'firebottle'];
+const THROWABLES = ['dynamite', 'firebottle'];
+
+/* Reputation perks: one is chosen each time the player levels up. */
+const PERKS = {
+  gunfighter: { name: 'Gunfighter', desc: 'Your bullets do 15% more damage.' },
+  quickhands: { name: 'Quick Hands', desc: 'Reload 30% faster.' },
+  steadyhand: { name: 'Steady Hand', desc: 'Precise shots line up 40% faster.' },
+  tough: { name: 'Tough as Leather', desc: '+30 maximum health.' },
+  medic: { name: 'Sawbones', desc: 'Health recovers faster and up to 75% on its own.' },
+  sprinter: { name: 'Fleet Foot', desc: 'Sprinting and dodge rolls use less stamina.' },
+  nerves: { name: 'Nerves of Steel', desc: 'Steady Nerves fills 50% faster.' },
+  horseman: { name: 'Horseman', desc: 'Your horse tires 40% slower when galloping.' },
+  packmule: { name: 'Pack Mule', desc: 'Carry 50% more ammunition.' },
+  haggler: { name: 'Silver Tongue', desc: 'Shop prices are 15% lower.' },
+  fence: { name: 'Fence Friend', desc: 'Stolen goods sell for 25% more.' },
+  ghost: { name: 'Ghost', desc: 'Witnesses take longer to report and the law gives up its search sooner.' }
+};
 
 /* speeds are px/s; walk is ~58 and running ~100 for comparison */
 const HORSE_BREEDS = {
@@ -116,14 +138,14 @@ const SHOPS = {
 };
 
 const SHOP_STOCK = {
-  general: { buy: ['bandage', 'tonic', 'oats', 'ammo:revolver', 'ammo:shells'], sells: ['pelt'] },
-  gunsmith: { buy: ['weapon:da', 'weapon:lever', 'weapon:shotgun', 'weapon:repeater', 'ammo:revolver', 'ammo:rifle', 'ammo:shells'], sells: [] },
+  general: { buy: ['bandage', 'tonic', 'oats', 'firebottle', 'ammo:revolver', 'ammo:shells'], sells: ['pelt'] },
+  gunsmith: { buy: ['weapon:da', 'weapon:lever', 'weapon:shotgun', 'weapon:repeater', 'ammo:revolver', 'ammo:rifle', 'ammo:shells', 'dynamite'], sells: [] },
   saloon: { buy: ['whiskey', 'service:meal', 'service:rumor'], sells: [] },
   hotel: { buy: ['service:sleep'], sells: [] },
   stables: { buy: ['horse:mustang', 'horse:morgan', 'horse:quarter', 'horse:arabian', 'oats', 'service:groom'], sells: [] },
   station: { buy: ['service:travel', 'service:paybounty'], sells: [] },
-  sheriff: { buy: ['service:paybounty'], sells: [] },
-  fence: { buy: ['ammo:revolver', 'ammo:rifle', 'bandage'], sells: ['stolen', 'pelt'] },
+  sheriff: { buy: ['service:paybounty', 'bounties'], sells: [] },
+  fence: { buy: ['ammo:revolver', 'ammo:rifle', 'bandage', 'dynamite'], sells: ['stolen', 'pelt'] },
   trapper: { buy: ['ammo:rifle', 'bandage'], sells: ['pelt'], peltBonus: 1.25 },
   bank: { buy: [], sells: [] }
 };

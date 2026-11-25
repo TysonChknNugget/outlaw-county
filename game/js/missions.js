@@ -77,6 +77,22 @@ const MissionSys = {
     if (typeof arg === 'string') ev[name + ':' + arg] = true;
   },
 
+  /* bring Hollister gang members along on a job */
+  crew(names) {
+    const P = G.player, out = [];
+    for (const n of names) {
+      const a = G.actors.find(x => x.name === n && !x.dead && x.faction === 'gang');
+      if (!a) continue;
+      if (!a.homePost && a.post) a.homePost = a.post;
+      a.post = null; a.follow = true; a.crew = true; a.path = null;
+      if (!Game.onScreen(a.x, a.y, 30)) { const sp = World.randomOpenNear(P.x, P.y, 30, 70, (x, y) => World.tileAtPx(x, y) === T.FLOOR); if (sp) { a.x = sp.x; a.y = sp.y; } }
+      out.push(a);
+    }
+    this.data.crew = out;
+    if (out.length) UI.notify(`${out.map(a => a.name).join(' and ')} ${out.length > 1 ? 'ride' : 'rides'} with you on this job.`, 'info');
+    return out;
+  },
+
   spawn(kind, x, y, o = {}) {
     const a = spawnActor(kind, x, y, Object.assign({ mission: this.active.id }, o));
     this.data.spawned.push(a);
@@ -99,6 +115,7 @@ const MissionSys = {
     this.active = null;
     this.cleanup(m, true);
     if (m.reward) Economy.addMoney(m.reward);
+    Progress.add(100);
     if (m.onComplete) m.onComplete();
     Sound.play('mission');
     UI.banner(m.title, `MISSION COMPLETE  +$${m.reward || 0}`);
@@ -111,6 +128,7 @@ const MissionSys = {
     for (const c of G.coaches) if (c.mission === m.id) c.mission = null;
     G.targets = [];
     for (const a of G.actors) if (a.giver) { a.follow = false; a.mounted = null; a.forceHostile = false; }
+    for (const a of this.data.crew || []) { a.follow = false; a.crew = false; a.mounted = null; a.ownHorse = null; if (a.homePost) a.post = a.homePost; }
     if (m.cleanup) m.cleanup(success);
   },
 
@@ -166,6 +184,11 @@ const MissionSys = {
       if (a.follow || (this.active && this.active.holdsGivers && this.active.holdsGivers.includes(id))) continue;
       a.post = posts[id];
       if (dist(a.x, a.y, a.post.x, a.post.y) > 400 && !Game.onScreen(a.x, a.y, 30) && !Game.onScreen(a.post.x, a.post.y, 30)) { a.x = a.post.x; a.y = a.post.y; a.path = null; }
+    }
+    // gang members home from a job walk back into camp off-screen
+    for (const a of G.actors) {
+      if (a.faction !== 'gang' || a.follow || !a.homePost || a.giver) continue;
+      if (dist(a.x, a.y, a.homePost.x, a.homePost.y) > 400 && !Game.onScreen(a.x, a.y, 30) && !Game.onScreen(a.homePost.x, a.homePost.y, 30)) { a.x = a.homePost.x; a.y = a.homePost.y; a.path = null; a.post = a.homePost; }
     }
   }
 };
@@ -238,8 +261,10 @@ MissionSys.register({
   hint: 'Boone Hollister has a job for you at the Hollister camp.',
   intro: [
     { who: 'Boone Hollister', text: "Ortega down at the Mesa Flats Trading Post has been selling us out to the marshals. Time he paid his dues." },
-    { who: 'Boone Hollister', text: "Ride in, draw on him, empty the till. Don't kill him — dead men don't open tills. Then lose the law and ride home." }
+    { who: 'Boone Hollister', text: "Ride in, draw on him, empty the till. Don't kill him — dead men don't open tills. Then lose the law and ride home." },
+    { who: 'Boone Hollister', text: "Take Dutch and the Kid. They'll watch the door and cover you on the way out." }
   ],
+  onStart() { MissionSys.crew(['Dutch Avery', 'Kid Tolliver']); },
   stages: [
     { text: 'Ride to the Mesa Flats Trading Post.', marker: () => ({ x: World.poi.mfStore.x, y: World.poi.mfStore.y - 30, label: 'Trading Post' }), done: () => nearPlayer(World.poi.mfStore.x, World.poi.mfStore.y, 110),
       enter: () => { delete G.world.robbed.mf_general; } },
@@ -260,8 +285,10 @@ MissionSys.register({
   hint: 'Lettie Crane is planning a stagecoach job. Find her at the Hollister camp.',
   intro: [
     { who: 'Lettie Crane', text: "The Frontier Express runs a payroll box from Mesa Flats to Dustwater today. One shotgun guard on the box, outriders behind." },
-    { who: 'Lettie Crane', text: "Wait at Buzzard Bend. When the coach comes through, stop it however you like — hold it up or drop the team. Then crack that box." }
+    { who: 'Lettie Crane', text: "Wait at Buzzard Bend. When the coach comes through, stop it however you like — hold it up or drop the team. Then crack that box." },
+    { who: 'Lettie Crane', text: "Mags and I are riding with you. We'll handle the outriders." }
   ],
+  onStart() { MissionSys.crew(['Lettie Crane', 'Mags Flynn']); },
   stages: [
     { text: 'Ride to Buzzard Bend and wait in ambush.', marker: () => ({ x: World.poi.ambush.x, y: World.poi.ambush.y - 20, label: 'Buzzard Bend' }), done: () => nearPlayer(World.poi.ambush.x, World.poi.ambush.y, 90) },
     {
@@ -302,9 +329,10 @@ MissionSys.register({
   hint: 'Boone has bad news. Talk to him at the Hollister camp.',
   intro: [
     { who: 'Boone Hollister', text: "The marshals took Eli Reyes outside Mesa Flats. They're holding him in a cage wagon at Red Rock, waiting on the judge's train." },
-    { who: 'Boone Hollister', text: "Eli rode with me eight years. We don't leave our own. Five marshals, maybe more. Get him out and bring him home alive." }
+    { who: 'Boone Hollister', text: "Eli rode with me eight years. We don't leave our own. Five marshals, maybe more. Get him out and bring him home alive." },
+    { who: 'Boone Hollister', text: "Dutch and I are coming with you. Let's go." }
   ],
-  holdsGivers: [],
+  onStart() { MissionSys.crew(['Boone Hollister', 'Dutch Avery']); },
   stages: [
     {
       text: "Ride to the Marshal's camp at Red Rock.",

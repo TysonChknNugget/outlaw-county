@@ -27,6 +27,17 @@ kbd { display: inline-block; min-width: 1.6em; padding: 1px 6px; margin-right: 6
 .bar.thin { height: 6px; margin-bottom: 3px; }
 .bar.hh span { background: linear-gradient(#d87a5a, #8a3a20); }
 .bar.hs span { background: linear-gradient(#d8c87a, #8a7a2a); }
+.bar.nv span { background: linear-gradient(#a8c8f0, #4a6a9a); }
+.bar.nv.ready span { box-shadow: 0 0 8px #a8c8f0; }
+.money-row { display: flex; align-items: center; justify-content: space-between; }
+#level { display: flex; align-items: center; gap: 6px; font: bold 12px var(--slab); color: #9ad0ff; }
+#level b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(#3a5a8a, #1a2a44); border: 1px solid #9ad0ff; color: #fff; font-size: 11px; }
+.xpbar { width: 70px; height: 5px; border-radius: 3px; background: rgba(0,0,0,.6); overflow: hidden; }
+#xp-fill { display: block; height: 100%; width: 0; background: #9ad0ff; }
+#perk-alert { margin-top: 4px; font: bold 12px var(--slab); color: var(--gold); animation: ldblink 1.4s infinite; }
+#throwable { margin-top: 6px; font: 12px var(--serif); color: #d8c8a8; text-align: right; }
+#throwable b { color: var(--gold); }
+#stance { position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); font: bold 12px var(--slab); letter-spacing: 2px; color: #9ad0ff; text-shadow: 0 1px 3px #000; }
 .horse-row { margin: 4px 0 6px; }
 .horse-label { font: bold 11px var(--slab); color: #d8b884; letter-spacing: 1px; margin-bottom: 2px; }
 #money { font: bold 24px var(--slab); color: var(--gold); text-shadow: 0 2px 0 #3a2208, 0 0 10px rgba(227,181,79,.3); }
@@ -208,6 +219,14 @@ body.desktop .web-only { display: none; }
 .wcard.active { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
 .ammo-list { margin-top: 10px; font-size: 13px; display: grid; gap: 3px; }
 .ammo-list b { color: var(--gold); }
+.rep-head { display: flex; justify-content: space-between; font-size: 13px; }
+.rep-head b { color: #9ad0ff; font-family: var(--slab); }
+.perk-pts { color: var(--gold); font: bold 13px var(--slab); margin: 8px 0; }
+.muted.small, p.small { font-size: 12px; }
+.perks { display: grid; gap: 4px; max-height: 210px; overflow: auto; margin-top: 6px; padding-right: 4px; }
+.perk { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border: 1px solid #4a3020; border-radius: 3px; background: rgba(0,0,0,.2); }
+.perk div { flex: 1; } .perk b { display: block; font-size: 12px; } .perk small { font-size: 11px; color: #b8a27a; }
+.perk.has { border-color: #6a8ab0; background: rgba(90,130,180,.15); } .perk .tick { color: #9ad0ff; font-weight: bold; }
 .horse-box small { display: block; color: #b8a27a; margin-top: 3px; }
 .mini-bar { height: 6px; background: rgba(0,0,0,.5); border-radius: 3px; margin-top: 5px; overflow: hidden; }
 .mini-bar span { display: block; height: 100%; }

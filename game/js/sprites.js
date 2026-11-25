@@ -544,6 +544,11 @@ const Sprites = {
     const P = (c, px, py, w = 1, h = 1) => { ctx.fillStyle = c; ctx.fillRect(x + px * sc, y + py * sc, w * sc, h * sc); };
     const metal = '#4a4e56', dark = '#26282c', wood = '#7a4a26', woodD = '#5a3418', hi = '#9aa0aa', brass = '#c8a040';
     switch (key) {
+      case 'fists': {
+        const sk = '#d9a27a', skD = '#b07a52';
+        P(sk, 4, 2, 9, 8); P(skD, 4, 9, 9, 1); P(skD, 6, 2, 1, 4); P(skD, 9, 2, 1, 4); P(sk, 2, 5, 3, 4); P('#8a5a3a', 13, 4, 6, 5); P('#6a4426', 13, 8, 6, 1);
+        break;
+      }
       case 'knife':
         P(woodD, 0, 4, 6, 3); P(wood, 0, 4, 6, 1); P(brass, 6, 3, 1, 5); P('#d8dde2', 7, 4, 13, 2); P('#aab0b6', 7, 6, 11, 1); P('#fff', 8, 4, 10, 1); P('#d8dde2', 20, 5, 1, 1); break;
       case 'sa': case 'da':

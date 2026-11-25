@@ -31,12 +31,14 @@
     <div id="hud-tl" class="panel">
       <div class="bar hp"><span id="hp-fill"></span><em>HEALTH</em></div>
       <div class="bar st"><span id="st-fill"></span><em>STAMINA</em></div>
+      <div class="bar nv" title="Steady Nerves — press V"><span id="nv-fill"></span><em>NERVES [V]</em></div>
       <div id="horse-row" class="horse-row hidden">
         <div class="horse-label" id="horse-name">Horse</div>
         <div class="bar thin hh"><span id="hh-fill"></span></div>
         <div class="bar thin hs"><span id="hs-fill"></span></div>
       </div>
-      <div id="money">$0</div>
+      <div class="money-row"><div id="money">$0</div><div id="level" title="Reputation level"><b id="lvl">1</b><span class="xpbar"><span id="xp-fill"></span></span></div></div>
+      <div id="perk-alert" class="hidden">★ New perk — press Tab</div>
     </div>
 
     <div id="hud-tr" class="panel">
@@ -62,7 +64,9 @@
       <div id="ammo"><span id="mag">6</span><small> / <span id="reserve">24</span></small></div>
       <div id="reload-state"></div>
       <div id="weapon-slots"></div>
+      <div id="throwable"></div>
     </div>
+    <div id="stance"></div>
 
     <div id="prompt"></div>
     <div id="progress" class="hidden"><div id="progress-label"></div><div class="track"><span id="progress-fill"></span></div></div>
@@ -162,10 +166,15 @@
         <div><kbd>Left click</kbd> Shoot / slash</div>
         <div><kbd>Right click</kbd> Steady aim (draw gun)</div>
         <div><kbd>R</kbd> Reload</div>
-        <div><kbd>E</kbd> Interact / rob / talk</div>
+        <div><kbd>Space</kbd> Dodge roll</div>
+        <div><kbd>C</kbd> Crouch / take cover</div>
+        <div><kbd>G</kbd> Throw dynamite / fire bottle</div>
+        <div><kbd>X</kbd> Switch throwable</div>
+        <div><kbd>V</kbd> Steady Nerves (slow time)</div>
+        <div><kbd>E</kbd> Interact / rob / talk / hogtie</div>
         <div><kbd>F</kbd> Mount or dismount</div>
         <div><kbd>H</kbd> Whistle for your horse</div>
-        <div><kbd>1–5</kbd> Select weapon (2 toggles revolvers)</div>
+        <div><kbd>1–5</kbd> Select weapon (1 fists/knife, 2 revolvers)</div>
         <div><kbd>Wheel</kbd> Cycle weapons</div>
         <div><kbd>Q</kbd> Use a bandage</div>
         <div><kbd>Tab</kbd> Inventory</div>
@@ -174,6 +183,10 @@
       </div>
       <h3>Outlaw tips</h3>
       <ul class="tips">
+        <li>Hold right mouse until the crosshair turns gold for a precise shot that hits much harder.</li>
+        <li>Crouch (C) behind crates, barrels, rocks or wagons and bullets from the other side hit the cover. Roll (Space) through gunfire.</li>
+        <li>Landing hits fills your Nerves. Press V to slow time for a few seconds.</li>
+        <li>Wanted posters at the sheriff's office pay more if you bring the outlaw in alive: knock them out with your fists or make them surrender, then hogtie them.</li>
         <li>Crimes need witnesses. Civilians run to the law — stop them and the crime goes unreported.</li>
         <li>Break line of sight, hide in bushes or buildings, or ride far away to lose a search.</li>
         <li>Pay off your bounty at a train station or sheriff's office when nobody is chasing you.</li>
@@ -214,7 +227,7 @@
       <div class="shop-head"><h2>Saddlebags</h2><div class="purse"><b id="inv-money"></b> · <span id="inv-bounty"></span></div></div>
       <div class="inv-grid">
         <section><h3>Weapons</h3><div id="inv-weapons" class="wgrid"></div><div id="inv-ammo" class="ammo-list"></div></section>
-        <section><h3>Items</h3><div id="inv-items" class="list"></div></section>
+        <section><h3>Reputation &amp; Perks</h3><div id="inv-rep"></div><h3>Items</h3><div id="inv-items" class="list"></div></section>
         <section><h3>Horse</h3><div id="inv-horse" class="horse-box"></div><h3>Record</h3><div id="inv-stats" class="stats"></div><h3>Story</h3><ol id="inv-missions" class="mlist"></ol></section>
       </div>
       <div class="menu-buttons row-buttons"><button class="btn ghost" data-act="close">Close (Tab)</button></div>
@@ -244,7 +257,9 @@
   <script src="js/world.js"></script>
   <script src="js/sprites.js"></script>
   <script src="js/entities.js"></script>
+  <script src="js/combat.js"></script>
   <script src="js/systems.js"></script>
+  <script src="js/progress.js"></script>
   <script src="js/missions.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>

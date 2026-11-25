@@ -196,6 +196,18 @@ const Sound = {
         this.noiseBurst(o, t, 3.0, 220, 0.4, 1.0, 'lowpass', 0.3); break;
       case 'punch':
         this.noiseBurst(o, t, 0.08, 500, 1, 0.6); break;
+      case 'hitmark':
+        this.tone(o, t, 1900, 0.05, 0.12, 'square', 1500); break;
+      case 'killmark':
+        this.tone(o, t, 1400, 0.08, 0.15, 'square', 900); this.tone(o, t + 0.06, 700, 0.18, 0.12, 'triangle', 350); break;
+      case 'roll':
+        this.noiseBurst(o, t, 0.28, 600, 1, 0.35, 'lowpass', 0.04); break;
+      case 'throw':
+        this.noiseBurst(o, t, 0.22, 1500, 2, 0.3, 'bandpass', 0.06); break;
+      case 'nervesOn':
+        this.tone(o, t, 220, 0.9, 0.18, 'sine', 110, 0.05); this.tone(o, t, 440, 0.6, 0.06, 'triangle', 220); break;
+      case 'nervesOff':
+        this.tone(o, t, 110, 0.5, 0.15, 'sine', 240, 0.02); break;
       case 'crow':
         this.tone(o, t, 900, 0.18, 0.06, 'sawtooth', 600); this.tone(o, t + 0.22, 850, 0.18, 0.06, 'sawtooth', 560); break;
     }

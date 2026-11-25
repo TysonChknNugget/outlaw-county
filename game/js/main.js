@@ -22,7 +22,9 @@ const SaveSys = {
       version: 1,
       meta: { savedAt: Date.now(), day: Env.day(), region: G.region || World.regionAt(P.x, P.y), money: P.money, missions: MissionSys.completed.length },
       time: G.time, weather: Env.weather,
-      player: { x: P.x, y: P.y, hp: P.hp, money: P.money, owned: P.owned, mag: P.mag, ammo: P.ammo, cur: P.cur, inv: P.inv, mounted: !!P.mounted },
+      player: { x: P.x, y: P.y, hp: P.hp, money: P.money, owned: P.owned, mag: P.mag, ammo: P.ammo, cur: P.cur, inv: P.inv, mounted: !!P.mounted,
+        xp: P.xp, level: P.level, perkPoints: P.perkPoints, perks: P.perks, nerve: P.nerve, throwSel: P.throwSel },
+      bounties: Bounties.save(),
       horse: h ? { breed: h.breed, name: h.name, coat: h.coat, pinto: h.pinto, hp: h.hp, x: h.x, y: h.y } : null,
       law: { bounty: Law.bounty },
       missions: { completed: MissionSys.completed, flags: MissionSys.flags },
@@ -165,6 +167,7 @@ const Game = {
     G.world = { robbed: {}, treasuresFound: [], treasuresRevealed: [], cratesLooted: [] };
     G.stats = { kills: 0, deaths: 0, shots: 0, hits: 0, robberies: 0, crimes: 0, earned: 0, hunted: 0, treasures: 0, missions: 0 };
     Law.reset(); MissionSys.reset(); Interact.action = null;
+    Combat.reset(); Bounties.reset(); Events.reset();
     World.closeVault();
     for (const b of World.buildings) b.goldTaken = false;
     for (const c of World.banditCamps) c.clearedAt = -99999;
@@ -186,7 +189,8 @@ const Game = {
     setTimeout(() => UI.dialogue([
       { who: 'Dustwater, 1893', text: "The 4:10 from Abilene hisses to a stop. You step onto the platform with a near-empty revolver, twenty-five dollars, and a telegram." },
       { who: 'Telegram', text: "COME TO DUSTWATER STOP ASK FOR BOONE AT THE RUSTY SPUR SALOON STOP WORK FOR A STEADY HAND STOP" },
-      { who: 'Controls', text: "WASD move · Shift sprint · Mouse aim · Left click shoot · Right click steady aim · R reload · E interact · F mount · Tab inventory · M map · Esc pause." }
+      { who: 'Controls', text: "WASD move · Shift sprint · Mouse aim · Left click shoot · Right click steady aim · R reload · E interact · F mount · Tab inventory · M map · Esc pause." },
+      { who: 'Gunfighting', text: "Space dodge-rolls · C crouches behind cover · G throws dynamite · V slows time with Steady Nerves · Hold right click until the crosshair turns gold for a precise shot." }
     ]), 900);
   },
 
@@ -212,6 +216,11 @@ const Game = {
     G.world = Object.assign({ robbed: {}, treasuresFound: [], treasuresRevealed: [], cratesLooted: [] }, s.world);
     delete G.world.camps;
     G.stats = Object.assign(G.stats, s.stats);
+    // version 1.2 additions (older saves get defaults)
+    P.owned.fists = true;
+    Object.assign(P, { xp: sp.xp || 0, level: sp.level || 1, perkPoints: sp.perkPoints || 0, perks: sp.perks || {}, nerve: sp.nerve || 0, throwSel: sp.throwSel || 'dynamite' });
+    Progress.apply(); P.hp = Math.min(sp.hp, P.maxHp);
+    Bounties.load(s.bounties);
     if (s.horse) {
       const h = new Horse(s.horse.breed, s.horse.x, s.horse.y, { owner: 'player', name: s.horse.name, coat: s.horse.coat, pinto: s.horse.pinto });
       h.hp = s.horse.hp; h.saddle = true; G.horses.push(h); P.horse = h;
@@ -243,7 +252,7 @@ const Game = {
     Sound.vol.master = s.master; Sound.vol.sfx = s.sfx; Sound.vol.music = s.music; Sound.applyVolumes();
     this.resize();
   },
-  npcDamageMul() { return { easy: 0.3, normal: 0.45, hard: 0.65 }[G.settings.difficulty] || 0.45; },
+  npcDamageMul() { return { easy: 0.22, normal: 0.35, hard: 0.55 }[G.settings.difficulty] || 0.35; },
 
   toggleFullscreen() {
     if (window.ocDesktop) { window.ocDesktop.toggleFullscreen(); return; }
@@ -349,22 +358,28 @@ const Game = {
     Env.update(dt);
     Law.update(dt);
     Interact.update(dt);
-    P.update(dt);
+    // Steady Nerves slows the world down; the player slows a little less
+    Combat.updateNerves(dt);
+    const ws = Combat.worldScale(), wdt = dt * ws;
+    P.update(ws < 1 ? dt * 0.75 : dt);
     for (const a of G.actors) {
-      if (!a.dead && !a.mission && !a.engaged && !a.follow && dist(a.x, a.y, P.x, P.y) > 1500) { a.lod = (a.lod || 0) + dt; if (a.lod < 0.25) continue; a.update(a.lod); a.lod = 0; }
-      else a.update(dt);
+      if (!a.dead && !a.mission && !a.engaged && !a.follow && !a.captive && dist(a.x, a.y, P.x, P.y) > 1500) { a.lod = (a.lod || 0) + wdt; if (a.lod < 0.25) continue; a.update(a.lod); a.lod = 0; }
+      else a.update(wdt);
     }
-    for (const h of G.horses) h.update(dt);
-    for (const an of G.animals) an.update(dt);
-    if (G.train) G.train.update(dt);
-    for (const c of G.coaches) c.update(dt);
-    Bullets.update(dt);
-    FX.update(dt);
+    for (const h of G.horses) h.update(wdt);
+    for (const an of G.animals) an.update(wdt);
+    if (G.train) G.train.update(wdt);
+    for (const c of G.coaches) c.update(wdt);
+    Bullets.update(wdt);
+    Combat.update(wdt);
+    FX.update(wdt);
     for (const f of G.floaters) f.life -= dt;
     G.floaters = G.floaters.filter(f => f.life > 0);
-    for (const l of G.tempLights) l.life -= dt;
+    for (const l of G.tempLights) l.life -= wdt;
     G.tempLights = G.tempLights.filter(l => l.life > 0);
     MissionSys.update(dt);
+    Bounties.update(dt);
+    Events.update(dt);
     Spawner.update(dt);
     // camera
     const c = G.cam, mw = G.mouseWorld;
@@ -452,12 +467,20 @@ const Game = {
         case 4: e.r.draw(ctx, night, x0, x1); break;
       }
     }
+    Combat.draw(ctx, t);
     Bullets.draw(ctx);
     FX.draw(ctx, x0, y0, x1, y1);
     // screen-space lighting and weather
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     Env.drawLighting(ctx, this.light, camX, camY, vw, vh, t);
     Env.drawWeather(ctx, vw, vh, t);
+    if (!menu && Combat.nervesOn) {
+      ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = 'rgba(128,128,128,0.65)'; ctx.fillRect(0, 0, vw, vh);
+      ctx.globalCompositeOperation = 'source-over';
+      const gr = ctx.createRadialGradient(vw / 2, vh / 2, vh * 0.25, vw / 2, vh / 2, vh * 0.8);
+      gr.addColorStop(0, 'rgba(40,60,90,0)'); gr.addColorStop(1, 'rgba(20,30,60,0.45)');
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, vw, vh);
+    }
     if (!menu && P.hp < 35 && !P.dead) {
       const a = (1 - P.hp / 35) * (0.35 + Math.sin(t * 6) * 0.1);
       const gr = ctx.createRadialGradient(vw / 2, vh / 2, vh * 0.3, vw / 2, vh / 2, vh * 0.8);

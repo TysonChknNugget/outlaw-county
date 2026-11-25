@@ -113,11 +113,11 @@ class Ent {
 const Bullets = {
   pool: [],
   init() { this.pool = []; for (let i = 0; i < 320; i++) this.pool.push({ on: false }); },
-  fire(x, y, a, wkey, owner, fac, dmgMul = 1) {
+  fire(x, y, a, wkey, owner, fac, dmgMul = 1, crit = false) {
     const w = WEAPONS[wkey];
     const b = this.pool.find(p => !p.on); if (!b) return;
     b.on = true; b.x = x; b.y = y; b.px = x; b.py = y; b.vx = Math.cos(a) * w.speed; b.vy = Math.sin(a) * w.speed;
-    b.a = a; b.d = 0; b.range = w.range * rand(0.9, 1.05); b.dmg = w.dmg * dmgMul; b.owner = owner; b.fac = fac; b.w = wkey;
+    b.a = a; b.d = 0; b.range = w.range * rand(0.9, 1.05); b.dmg = w.dmg * dmgMul; b.owner = owner; b.fac = fac; b.w = wkey; b.crit = crit;
   },
   canHit(b, e) {
     if (e === b.owner || e.dead || e.inside) return false;
@@ -144,6 +144,7 @@ const Bullets = {
         }
         // entity hits
         const hit = this.testHit(b, ox, oy);
+        if (hit === 'cover') { FX.impact(b.x, b.y, chance(0.5) ? 'wood' : 'dust', b.a); if (chance(0.3)) Sound.play('ricochet', b.x, b.y, 0.5); b.on = false; break; }
         if (hit) { this.applyHit(b, hit); b.on = false; break; }
         if (b.d > b.range) {
           const t = World.tileAtPx(b.x, b.y + 6);
@@ -161,7 +162,10 @@ const Bullets = {
   testHit(b, ox, oy) {
     const P = G.player;
     if (P !== b.owner && !P.dead && this.canHit(b, P) && Math.abs(P.x - b.x) < 24) {
-      if (this.segHit(ox, oy, b.x, b.y, P.x, P.y - (P.mounted ? 14 : 6), P.mounted ? 7 : 5.5)) return P;
+      if (this.segHit(ox, oy, b.x, b.y, P.x, P.y - (P.mounted ? 14 : P.crouch ? 3 : 6), P.mounted ? 7 : P.crouch ? 4.5 : 5.5)) {
+        if (P.rollT > 0.1) return null;          // rolled through it
+        return Combat.coverBlocks(b) ? 'cover' : P;
+      }
     }
     for (const a of G.actors) {
       if (Math.abs(a.x - b.x) > 24 || Math.abs(a.y - b.y) > 30 || !this.canHit(b, a)) continue;
@@ -188,7 +192,9 @@ const Bullets = {
   applyHit(b, e) {
     if (e instanceof Target) { e.shatter(); return; }
     if (e instanceof Stagecoach) { e.hurt(b.dmg, b.owner, b.x, b.y); return; }
+    Combat.lastCrit = !!b.crit;
     e.hurt(b.dmg, b.owner, b.a);
+    Combat.lastCrit = false;
   },
   draw(ctx) {
     for (const b of this.pool) {
@@ -202,7 +208,7 @@ const Bullets = {
   }
 };
 
-function meleeAttack(att, dmg, range, face) {
+function meleeAttack(att, dmg, range, face, nonlethal) {
   const hx = att.x + Math.cos(face) * 8, hy = att.y - 6 + Math.sin(face) * 8;
   let hit = null, best = 1e9;
   const test = e => {
@@ -213,7 +219,11 @@ function meleeAttack(att, dmg, range, face) {
   for (const a of G.actors) if (!(att === G.player && a.faction === 'gang' && a.invuln)) test(a);
   for (const a of G.animals) test(a);
   if (att !== G.player) test(G.player);
-  if (hit) { hit.hurt(dmg, att, face); Sound.play('punch', hx, hy); FX.impact(hx, hy, 'blood', face + Math.PI); }
+  if (hit) {
+    hit.hurt(dmg, att, face, { nonlethal });
+    Sound.play('punch', hx, hy);
+    FX.impact(hx, hy, nonlethal ? 'dust' : 'blood', face + Math.PI);
+  }
   return hit;
 }
 
@@ -224,7 +234,9 @@ class Player extends Ent {
     const s = World.poi.start;
     this.x = s.x; this.y = s.y; this.r = 5;
     this.hp = this.maxHp = 100; this.stamina = 100; this.money = 25;
-    this.owned = { knife: true, sa: true };
+    this.owned = { fists: true, knife: true, sa: true };
+    this.nerve = 0; this.steady = 0; this.rollT = 0; this.rollCD = 0; this.crouch = false; this.lastHurt = 99; this.lastFire = 99;
+    this.xp = 0; this.level = 1; this.perkPoints = 0; this.perks = {}; this.throwSel = 'dynamite'; this.throwCD = 0;
     this.mag = { sa: 6, da: 6, lever: 10, shotgun: 2, repeater: 7 };
     this.ammo = { revolver: 24, rifle: 0, shells: 0 };
     this.cur = 'sa'; this.lastRevolver = 'sa';
@@ -240,12 +252,43 @@ class Player extends Ent {
     this.hurtT = Math.max(0, this.hurtT - dt); this.invuln = Math.max(0, this.invuln - dt);
     if (this.dead) { this.deathT += dt; return; }
     this.fireCD -= dt; this.recoil = Math.max(0, this.recoil - dt * 6); this.swingT = Math.max(0, this.swingT - dt); this.drawnT -= dt;
+    this.lastHurt += dt; this.lastFire += dt; this.rollCD -= dt;
     const mw = G.mouseWorld;
     this.face = Math.atan2(mw.y - (this.y - (this.mounted ? 16 : 8)), mw.x - this.x);
     let ix = (Input.down('KeyD') || Input.down('ArrowRight') ? 1 : 0) - (Input.down('KeyA') || Input.down('ArrowLeft') ? 1 : 0);
     let iy = (Input.down('KeyS') || Input.down('ArrowDown') ? 1 : 0) - (Input.down('KeyW') || Input.down('ArrowUp') ? 1 : 0);
     const shift = Input.down('ShiftLeft') || Input.down('ShiftRight');
     if (Law.arrest && Law.arrest.surrendering) { ix = iy = 0; }
+    // health slowly comes back out of combat
+    if (this.lastHurt > 6 && this.lastFire > 4) {
+      const medic = Progress.has('medic'), cap = this.maxHp * (medic ? 0.75 : 0.5);
+      if (this.hp < cap) this.hp = Math.min(cap, this.hp + (medic ? 6 : 4) * dt);
+    }
+    // precise shots: hold steady aim until the crosshair settles
+    if (Input.mouse.rdown && !this.sprinting && this.rollT <= 0 && !WEAPONS[this.cur].melee) this.steady = Math.min(1, this.steady + dt / (0.65 * (Progress.has('steadyhand') ? 0.6 : 1)) * (this.moving ? 0.5 : 1));
+    else this.steady = Math.max(0, this.steady - dt * 3);
+    if (Input.hit('KeyC') && !this.mounted) { this.crouch = !this.crouch; Sound.play('step', this.x, this.y); }
+    if (Input.hit('KeyG')) Combat.playerThrow();
+    if (Input.hit('KeyX')) Combat.cycleThrowable();
+    if (Input.hit('KeyV')) Combat.toggleNerves();
+    // dodge roll
+    const rollCost = Progress.has('sprinter') ? 15 : 25;
+    if (Input.hit('Space') && !this.mounted && this.rollT <= 0 && this.rollCD <= 0 && !(Law.arrest && Law.arrest.surrendering)) {
+      if (this.stamina >= rollCost) {
+        const l = Math.hypot(ix, iy);
+        this.rollA = l ? Math.atan2(iy, ix) : this.face;
+        this.rollT = 0.36; this.rollCD = 0.5; this.stamina -= rollCost; this.staminaDelay = 1; this.crouch = false;
+        this.reload = null; Sound.play('roll', this.x, this.y); FX.dust(this.x, this.y, 4);
+      } else Floaters.add(this.x, this.y - 22, 'Too tired to roll', '#ffd27a');
+    }
+    if (this.rollT > 0) {
+      this.rollT -= dt;
+      this.move(Math.cos(this.rollA) * 205 * dt, Math.sin(this.rollA) * 205 * dt);
+      this.vx = Math.cos(this.rollA) * 60; this.vy = Math.sin(this.rollA) * 60;
+      this.moving = true; this.animT += dt * 2;
+      this.inBuilding = World.buildingAt(this.x, this.y);
+      return;
+    }
     if (this.mounted) {
       const h = this.mounted;
       h.control(ix, iy, shift, dt);
@@ -255,7 +298,8 @@ class Player extends Ent {
     } else {
       const len = Math.hypot(ix, iy); if (len) { ix /= len; iy /= len; }
       this.sprinting = shift && len > 0 && this.stamina > 1 && !(Input.mouse.rdown);
-      const spd = this.sprinting ? 102 : Input.mouse.rdown ? 44 : 58;
+      if (this.sprinting) this.crouch = false;
+      const spd = this.sprinting ? 102 : this.crouch ? 30 : Input.mouse.rdown ? 44 : 58;
       const k = Math.min(1, dt * 12);
       this.vx += (ix * spd - this.vx) * k; this.vy += (iy * spd - this.vy) * k;
       const ox = this.x, oy = this.y;
@@ -263,7 +307,7 @@ class Player extends Ent {
       const moved = dist(ox, oy, this.x, this.y);
       this.moving = moved > 0.15 * dt * 60;
       this.animT += moved / 58;
-      if (this.sprinting) { this.stamina = Math.max(0, this.stamina - 15 * dt); this.staminaDelay = 1; }
+      if (this.sprinting) { this.stamina = Math.max(0, this.stamina - 15 * dt * (Progress.has('sprinter') ? 0.65 : 1)); this.staminaDelay = 1; }
       else if (this.staminaDelay > 0) this.staminaDelay -= dt;
       else this.stamina = Math.min(100, this.stamina + 16 * dt);
       if (this.moving) {
@@ -281,7 +325,7 @@ class Player extends Ent {
     this.inBuilding = World.buildingAt(this.x, this.y);
 
     // weapon selection
-    if (Input.hit('Digit1')) this.select('knife');
+    if (Input.hit('Digit1')) this.select(this.cur === 'fists' ? 'knife' : 'fists');
     if (Input.hit('Digit2')) {
       if ((this.cur === 'sa' || this.cur === 'da') && this.owned.sa && this.owned.da) this.select(this.cur === 'sa' ? 'da' : 'sa');
       else this.select(this.owned[this.lastRevolver] ? this.lastRevolver : (this.owned.sa ? 'sa' : 'da'));
@@ -315,9 +359,9 @@ class Player extends Ent {
     const w = WEAPONS[this.cur];
     if (this.fireCD > 0) return;
     if (w.melee) {
-      this.swingT = 0.25; this.fireCD = w.rate; this.drawnT = 2;
-      Sound.play('knife', this.x, this.y);
-      meleeAttack(this, w.dmg, w.range, this.face);
+      this.swingT = 0.25; this.fireCD = w.rate; this.drawnT = 2; this.lastFire = 0;
+      Sound.play(w.nonlethal ? 'punch' : 'knife', this.x, this.y, w.nonlethal ? 0.5 : 1);
+      meleeAttack(this, w.dmg, w.range, this.face, w.nonlethal);
       return;
     }
     if (this.mag[this.cur] <= 0) {
@@ -330,10 +374,15 @@ class Player extends Ent {
     const a = this.face;
     let sm = 1;
     if (this.moving) sm *= 1.5; if (this.mounted) sm *= 1.35; if (this.sprinting) sm *= 1.5; if (Input.mouse.rdown) sm *= 0.55;
+    if (Combat.nervesOn) sm *= 0.4;
+    const crit = this.steady >= 1;
+    if (crit) sm *= 0.3;
+    const dmgMul = (crit ? 1.8 : 1) * (Progress.has('gunfighter') ? 1.15 : 1);
     const hy = this.mounted ? 16 : 8;
     const mx = this.x + Math.cos(a) * (5 + w.len), my = this.y - hy + Math.sin(a) * (5 + w.len);
     const n = w.pellets || 1;
-    for (let i = 0; i < n; i++) Bullets.fire(mx, my + (hy - 8), a + rand(-1, 1) * w.spread * sm, this.cur, this, 'player');
+    for (let i = 0; i < n; i++) Bullets.fire(mx, my + (hy - 8), a + rand(-1, 1) * w.spread * sm, this.cur, this, 'player', dmgMul, crit);
+    this.steady = 0; this.lastFire = 0;
     FX.muzzle(mx, my, a, n > 1 || w.ammo === 'rifle');
     Sound.play(w.sound, this.x, this.y);
     this.fireCD = w.rate; this.recoil = 1; this.drawnT = 3;
@@ -350,7 +399,7 @@ class Player extends Ent {
     const w = WEAPONS[this.cur];
     if (w.melee || this.reload || this.mag[this.cur] >= w.cap) return;
     if (this.ammo[w.ammo] <= 0) { Floaters.add(this.x, this.y - 22, 'No ' + AMMO[w.ammo].name, '#ff9a7a'); Sound.play('empty', this.x, this.y); return; }
-    this.reload = { t: w.reloadTime + (w.reload === 'single' ? 0.25 : 0), key: this.cur };
+    this.reload = { t: (w.reloadTime + (w.reload === 'single' ? 0.25 : 0)) * this.reloadMul(), key: this.cur };
     this.drawnT = 2;
     if (this.cur === 'sa' || this.cur === 'da') {
       Sound.play('cylinder', this.x, this.y);
@@ -369,7 +418,7 @@ class Player extends Ent {
     if (r.t > 0) return;
     if (w.reload === 'single') {
       if (this.ammo[w.ammo] > 0 && this.mag[this.cur] < w.cap) { this.mag[this.cur]++; this.ammo[w.ammo]--; Sound.play('shellIn', this.x, this.y, 0.8); }
-      if (this.mag[this.cur] < w.cap && this.ammo[w.ammo] > 0) r.t = w.reloadTime;
+      if (this.mag[this.cur] < w.cap && this.ammo[w.ammo] > 0) r.t = w.reloadTime * this.reloadMul();
       else { this.reload = null; Sound.play(w.lever ? 'lever' : 'cock', this.x, this.y, 0.7); }
     } else {
       const n = Math.min(w.cap - this.mag[this.cur], this.ammo[w.ammo]);
@@ -378,10 +427,14 @@ class Player extends Ent {
     }
   }
 
+  reloadMul() { return Progress.has('quickhands') ? 0.7 : 1; }
+
   hurt(dmg, src, angle) {
     if (this.invuln > 0 || this.dead) return;
+    if (this.rollT > 0.1 && src !== null) return;
     if (this.mounted && chance(0.3)) { this.mounted.hurt(dmg, src); return; }
-    this.hp -= dmg; this.hurtT = 0.3;
+    this.hp -= dmg; this.hurtT = 0.3; this.lastHurt = 0;
+    if (angle !== undefined && !this.mounted) { this.move(Math.cos(angle) * 3, Math.sin(angle) * 3); }
     FX.impact(this.x, this.y - 6, 'blood', angle || 0);
     Sound.play('hurt', this.x, this.y);
     UI.flashDamage(Math.min(1, dmg / 40));
@@ -455,13 +508,21 @@ class Player extends Ent {
       face: this.face, moving: this.moving && !mounted, animT: this.animT, pal: PAL.player, weapon: this.cur, drawn: this.drawn,
       recoil: this.recoil, reload: this.reload ? (this.reload.t + 0.01) : 0, swing: this.swingT > 0 ? this.swingT / 0.25 : 0,
       holster: this.cur !== 'knife', longgun: this.owned.lever || this.owned.repeater, mounted, hurt: this.hurtT,
-      state: this.dead ? 'dead' : (Law.arrest && Law.arrest.surrendering ? 'handsup' : 'normal'), deadT: this.deathT, masked: Law.heat > 0
+      state: this.dead ? 'dead' : (Law.arrest && Law.arrest.surrendering ? 'handsup' : (this.crouch && !mounted ? 'kneel' : 'normal')), deadT: this.deathT, masked: Law.heat > 0
     };
   }
   draw(ctx) {
     if (this.mounted) return; // drawn by the horse
     if (this.hidden) ctx.globalAlpha = 0.75;
-    Sprites.human(ctx, this.x, this.y, this.drawOpts(false));
+    if (this.rollT > 0 && !this.dead) {
+      // tumble: spin the figure around its middle
+      const k = 1 - this.rollT / 0.36, s = Math.cos(this.rollA) < 0 ? -1 : 1;
+      Sprites.shadow(ctx, this.x, this.y, 5, 2);
+      ctx.save(); ctx.translate(this.x, this.y - 5); ctx.rotate(k * TAU * s); ctx.translate(-this.x, -(this.y - 5));
+      const o = this.drawOpts(false); o.drawn = false; o.moving = false;
+      Sprites.human(ctx, this.x, this.y + 3, o);
+      ctx.restore();
+    } else Sprites.human(ctx, this.x, this.y, this.drawOpts(false));
     ctx.globalAlpha = 1;
   }
   drawMounted(ctx, x, y) { Sprites.human(ctx, x - Math.cos(this.mounted.heading) * 1, y - 9, this.drawOpts(true)); }
@@ -484,6 +545,8 @@ const BARKS = {
 
 function npcHostile(a, b) {
   const fa = a.faction, fb = b.faction;
+  if (a.surrendered || b.surrendered || a.captive || b.captive || a.downed > 0 || b.downed > 0) return false;
+  if ((a.raider && fb === 'civ') || (b.raider && fa === 'civ')) return true;
   if (fa === fb || fa === 'civ' || fb === 'civ') return false;
   if ((fa === 'law' && fb === 'rival') || (fa === 'rival' && fb === 'law')) return true;
   if ((fa === 'gang' && fb === 'rival') || (fa === 'rival' && fb === 'gang')) return a.aggro || b.aggro || fa === 'gang';
@@ -521,6 +584,10 @@ class Actor extends Ent {
     this.encounter = !!o.encounter; this.role = o.role || null; this.aimAtT = 0; this.talk = o.talk || null;
     this.lod = 0; this.giver = o.giver || null; this.ownHorse = o.ownHorse || null;
     this.face = rand(TAU); this.lastPos = { x, y };
+    this.kx = 0; this.ky = 0; this.reactT = 0; this.alertT = 0; this.aimT = 0;
+    this.raider = !!o.raider; this.bountyTarget = !!o.bountyTarget; this.noRole = !!o.noRole;
+    const role = this.role; this.role = null;
+    if (role) Combat.applyRole(this, role); else Combat.assignRole(this);
   }
 
   bark(list, force) {
@@ -534,6 +601,8 @@ class Actor extends Ent {
     if (e === G.player && G.player.hidden) r = 34;
     const d = dist(this.x, this.y, e.x, e.y);
     if (d > r) return false;
+    // a player crouched behind cover can't be seen past it
+    if (e === G.player && e.crouch && d > 40) return World.los(this.x, this.y - 8, e.x, e.y - 3, SOL.VIS | SOL.SHOT) && World.los(this.x, this.y - 8, e.x, e.y + 4, SOL.VIS | SOL.SHOT);
     return World.los(this.x, this.y - 8, e.x, e.y - 8, SOL.VIS);
   }
 
@@ -541,11 +610,21 @@ class Actor extends Ent {
     this.barkT -= dt; this.hurtT = Math.max(0, this.hurtT - dt);
     if (this.dead) { this.deadT += dt; return; }
     this.fireCD -= dt; this.recoil = Math.max(0, this.recoil - dt * 6);
-    if (this.downed > 0) { this.downed -= dt; if (this.downed <= 0) { this.hp = this.maxHp * 0.5; this.bark("I'm back up!"); } return; }
+    if (this.kx || this.ky) {   // knockback from hits
+      this.move(this.kx * dt, this.ky * dt);
+      const k = Math.max(0, 1 - dt * 12); this.kx *= k; this.ky *= k;
+      if (Math.abs(this.kx) + Math.abs(this.ky) < 2) this.kx = this.ky = 0;
+    }
+    if (this.downed > 0) {
+      this.downed -= dt;
+      if (this.downed <= 0) { this.hp = this.maxHp * 0.5; this.knockedOut = false; this.bark(this.invuln ? "I'm back up!" : 'Ugh... my head...'); }
+      return;
+    }
     if (this.inside) { this.updateInside(dt); return; }
     const ox = this.x, oy = this.y;
-    if (this.reloadT > 0) { this.reloadT -= dt; if (this.reloadT <= 0) this.mag = WEAPONS[this.weapon].cap; }
-    switch (this.faction) {
+    if (this.reloadT > 0 && this.weapon) { this.reloadT -= dt; if (this.reloadT <= 0) this.mag = WEAPONS[this.weapon].cap; }
+    if (this.surrendered || this.captive) Combat.passiveAI(this, dt);
+    else switch (this.faction) {
       case 'civ': this.civAI(dt); break;
       case 'law': this.lawAI(dt); break;
       case 'rival': this.rivalAI(dt); break;
@@ -825,14 +904,24 @@ class Actor extends Ent {
   rivalAI(dt) {
     const P = G.player;
     const dP = dist(this.x, this.y, P.x, P.y);
-    if (!P.dead && !this.aggro && (dP < 150 || (this.encounter && dP < 260)) && this.canSee(P, 260)) {
+    const goAggro = () => {
       this.aggro = true; this.bark(BARKS.rival);
-      for (const a of G.actors) if (a !== this && a.faction === 'rival' && !a.dead && dist(a.x, a.y, this.x, this.y) < 260) a.aggro = true;
+      for (const a of G.actors) if (a !== this && a.faction === 'rival' && !a.dead && !a.surrendered && dist(a.x, a.y, this.x, this.y) < 260) a.aggro = true;
+    };
+    if (!P.dead && !this.aggro && !this.preferLaw && this.canSee(P, 260)) {
+      if (this.encounter || this.raider) { if (dP < 260) goAggro(); }
+      else if (this.camp) {
+        // camps warn strangers off before they start shooting
+        const c = this.camp;
+        if (dP < 175 && c.warnAt === undefined) { c.warnAt = Combat.t; this.bark('Turn around, stranger. This is Rattlesnake land!', true); UI.notify(`${c.name}: the Rattlesnakes are warning you off. Leave, or they'll start shooting.`, 'warn'); }
+        if (c.warnAt !== undefined && (dP < 75 || (Combat.t - c.warnAt > 6 && dP < 175))) goAggro();
+        if (c.warnAt !== undefined && dP > 320 && Combat.t - c.warnAt > 10) c.warnAt = undefined;
+      } else if (dP < 150) goAggro();
     }
     if (this.aggro && (P.dead || dP > 700)) this.aggro = false;
     let tgt = this.aggro && !P.dead ? P : null;
-    const alt = this.findHostileNPC(240);
-    if (alt && (!tgt || dist(this.x, this.y, alt.x, alt.y) < dP * 0.7)) tgt = alt;
+    const alt = this.findHostileNPC(this.preferLaw ? 320 : 240);
+    if (alt && (!tgt || this.preferLaw || dist(this.x, this.y, alt.x, alt.y) < dP * 0.7)) tgt = alt;
     if (tgt) { this.combat(dt, tgt); return; }
     this.drawn = false; this.target = null;
     if (this.encounter) { this.navigate(P.x, P.y, this.mounted ? 125 : this.speedRun * 0.7, dt, 60); return; }
@@ -848,40 +937,36 @@ class Actor extends Ent {
     }
     if (tgt && this.weapon) { if (!this.target) this.bark(BARKS.gang); this.combat(dt, tgt); return; }
     this.target = null; this.drawn = false;
-    if (this.follow && !P.dead) {
-      if (P.mounted && !this.mounted && this.ownHorse) { this.mounted = this.ownHorse; }
-      if (!P.mounted && this.mounted && dist(this.x, this.y, P.x, P.y) < 60) { this.mounted = null; }
-      const d = dist(this.x, this.y, P.x, P.y);
-      if (d > 900 && !World.circleBlocked(P.x - 20, P.y, 6)) { const sp = World.randomOpenNear(P.x, P.y, 30, 60); if (sp) { this.x = sp.x; this.y = sp.y; } }
-      const spd = this.mounted ? (P.mounted ? Math.max(120, P.mounted.speed * 1.05) : 120) : (P.sprinting || P.mounted ? this.speedRun * 1.1 : this.speedWalk * 1.6);
-      if (d > (this.mounted ? 50 : 34)) this.navigate(P.x, P.y, spd, dt, this.mounted ? 46 : 30);
-      return;
-    }
+    if (this.follow && !P.dead) { this.followPlayer(dt); return; }
     if (this.post) { if (this.navigate(this.post.x, this.post.y, this.speedWalk, dt, 5)) { if (this.post.face !== undefined) this.face = this.post.face; } return; }
     this.wander(dt, 50);
   }
 
-  hurt(dmg, src, angle) {
+  hurt(dmg, src, angle, o = {}) {
     if (this.dead || this.inside || this.downed > 0) return;
     this.hp -= dmg; this.hurtT = 0.25;
-    FX.impact(this.x, this.y - 6, 'blood', angle || 0);
+    if (!o.nonlethal) FX.impact(this.x, this.y - 6, 'blood', angle || 0);
     Sound.play('hit', this.x, this.y, 0.8);
+    if (angle !== undefined && !this.mounted) { const kb = o.nonlethal ? 90 : 55; this.kx = Math.cos(angle) * kb; this.ky = Math.sin(angle) * kb; }
     const byPlayer = src === G.player;
     let killed = false;
     if (this.hp <= 0) {
       if (this.invuln) { this.hp = 1; this.downed = 7; this.bark("Argh! I'm hit!", true); }
+      else if (o.nonlethal) { this.hp = 1; this.downed = 10; this.knockedOut = true; this.surrendered = false; Combat.release(this); this.bark('Oof...', true); }
       else { killed = true; this.die(src); }
     }
     if (!killed) {
-      if (this.faction === 'rival') this.aggro = true;
-      if (this.faction === 'civ' && this.kind !== 'clerk') { this.state = 'flee'; this.fleeFrom = src || this; this.timer = rand(6, 10); this.bark(BARKS.civFlee); }
+      if (this.faction === 'rival' && !this.surrendered) this.aggro = true;
+      if (this.faction === 'civ' && this.kind !== 'clerk' && !this.knockedOut) { this.state = 'flee'; this.fleeFrom = src || this; this.timer = rand(6, 10); this.bark(BARKS.civFlee); }
       if (this.faction === 'law' && byPlayer) this.engaged = true;
+      if (this.target && chance(0.25)) this.bark("I'm hit!");
     }
-    if (byPlayer) { G.stats.hits++; Law.playerAttacked(this, killed); }
+    if (byPlayer) { G.stats.hits++; Combat.onPlayerHit(this, killed); Law.playerAttacked(this, killed); }
   }
 
   die(src) {
     this.dead = true; this.deadT = 0; this.drawn = false; this.hp = 0; this.witness = null;
+    Combat.release(this);
     Sound.play('die', this.x, this.y, 0.7);
     if (this.mounted) {
       const h = this.mounted; h.rider = null; h.owner = this.faction === 'law' ? 'law' : 'wild'; h.home = { x: h.x, y: h.y };
@@ -900,11 +985,21 @@ class Actor extends Ent {
       state: this.dead ? 'dead' : this.downed > 0 ? 'kneel' : (this.state === 'handsup' ? 'handsup' : 'normal'),
       mounted: !!this.mounted, hurt: this.hurtT, deadT: this.deadT, masked: this.faction === 'rival'
     };
+    const big = this.role === 'brute' && !this.dead;
+    if (big) { ctx.save(); ctx.translate(this.x, this.y); ctx.scale(1.25, 1.25); ctx.translate(-this.x, -this.y); }
     if (this.mounted) {
       const h = this.mounted;
       Sprites.horse(ctx, this.x, this.y, { face: h.heading, animT: h.animT, speed: Math.min(1, h.speed / 200), coat: h.coat, mane: h.mane, saddle: true, pinto: h.pinto });
       Sprites.human(ctx, this.x - Math.cos(h.heading), this.y - 9, o);
+    } else if (this.knockedOut) {
+      // out cold: lying down without the blood pool
+      const s = Math.cos(this.face) < 0 ? -1 : 1, p = this.pal;
+      Sprites.R(ctx, p.pants || p.dress || '#333', this.x - 7 * s - (s < 0 ? 3 : 0), this.y - 3, 4, 3);
+      Sprites.R(ctx, p.coat || p.shirt, this.x - 3, this.y - 4, 7, 4);
+      Sprites.R(ctx, p.skin, this.x + 4 * s - (s < 0 ? 3 : 0), this.y - 4, 4, 3);
     } else Sprites.human(ctx, this.x, this.y, o);
+    if (big) ctx.restore();
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -938,7 +1033,7 @@ class Horse extends Ent {
     }
     const acc = target > this.speed ? d.accel : 240;
     this.speed += clamp(target - this.speed, -acc * dt, acc * dt);
-    if (sprint && len && target === d.sprint) this.stamina -= 20 * dt;
+    if (sprint && len && target === d.sprint) this.stamina -= 20 * dt * (this.rider === G.player && Progress.has('horseman') ? 0.6 : 1);
     else this.stamina += (this.speed < 10 ? 16 : 8) * dt;
     this.stamina = clamp(this.stamina, 0, this.maxSt);
     if (this.stamina <= 0 && !this.exhausted) { this.exhausted = true; Sound.play('neigh', this.x, this.y, 0.6); Floaters.add(this.x, this.y - 26, this.name + ' is winded', '#ffd27a'); }
@@ -1062,6 +1157,7 @@ class Animal extends Ent {
     this.hp -= dmg; FX.impact(this.x, this.y - 4, 'blood', angle || 0);
     if (this.kind === 'coyote' && src === G.player) this.state = 'hunt'; else { this.state = 'flee'; this.timer = 4; }
     if (this.hp <= 0) { this.dead = true; this.deadT = 0; if (src === G.player) G.stats.hunted++; }
+    if (src === G.player) Combat.onPlayerHit(this, this.dead);
   }
   draw(ctx) { Sprites.animal(ctx, this); }
 }

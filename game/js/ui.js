@@ -146,7 +146,7 @@ const UI = {
       if (e.weapon) icon = `<canvas width="72" height="24" data-w="${e.weapon}"></canvas>`;
       row.innerHTML = `<div class="r-main">${icon}<div><b>${esc(e.name)}</b><small>${esc(e.desc || '')}</small></div></div><div class="r-note">${esc(e.note || '')}</div><div class="r-price">${e.noCharge && !e.price ? '' : formatMoney(e.price)}</div>`;
       const btn = document.createElement('button'); btn.className = 'btn small';
-      btn.textContent = e.reason || (e.noCharge ? 'Pay' : 'Buy'); btn.disabled = !e.can;
+      btn.textContent = e.reason || e.label || (e.noCharge ? 'Pay' : 'Buy'); btn.disabled = !e.can;
       btn.onclick = () => { e.buy(); Sound.play('buy'); if (this.modal === 'shop') this.renderShop(); };
       row.append(btn); buy.append(row);
     }
@@ -184,7 +184,20 @@ const UI = {
       if (owned) card.onclick = () => { P.select(k); this.renderInventory(); };
       wg.append(card);
     }
-    $('inv-ammo').innerHTML = Object.keys(AMMO).map(a => `<div><b>${P.ammo[a]}</b> ${AMMO[a].name} <small>(max ${AMMO[a].max})</small></div>`).join('');
+    $('inv-ammo').innerHTML = Object.keys(AMMO).map(a => `<div><b>${P.ammo[a]}</b> ${AMMO[a].name} <small>(max ${Progress.ammoMax(a)})</small></div>`).join('') +
+      THROWABLES.map(k => `<div><b>${P.inv[k] || 0}</b> ${ITEMS[k].name} <small>${P.throwSel === k ? '(selected — G to throw)' : '(X to select)'}</small></div>`).join('');
+    // reputation & perks
+    const need = Progress.need(P.level);
+    let rep = `<div class="rep-head"><b>Level ${P.level}</b><span>${Math.floor(P.xp)}/${need} reputation</span></div><div class="mini-bar"><span style="width:${P.xp / need * 100}%;background:#9ad0ff"></span></div>`;
+    rep += P.perkPoints ? `<p class="perk-pts">★ ${P.perkPoints} perk point${P.perkPoints > 1 ? 's' : ''} to spend — pick below</p>` : '<p class="muted small">Earn reputation from fights, robberies, bounties and jobs to unlock perks.</p>';
+    rep += '<div class="perks">' + Object.entries(PERKS).map(([id, p]) => {
+      const has = P.perks[id];
+      return `<div class="perk ${has ? 'has' : ''}"><div><b>${esc(p.name)}</b><small>${esc(p.desc)}</small></div>${has ? '<span class="tick">✔</span>' : P.perkPoints ? `<button class="btn small" data-perk="${id}">Learn</button>` : ''}</div>`;
+    }).join('') + '</div>';
+    const A = Bounties.active;
+    rep += `<h3>Bounty</h3>` + (A ? `<p><b>${esc(A.name)}</b> — ${A.state === 'hunting' ? `hunting ($${A.alive} alive / $${A.dead} dead)` : A.state === 'captive' ? 'tied up — take them to a sheriff' : 'dead — collect at a sheriff'}</p>` : '<p class="muted small">No bounty. Check the wanted posters at a sheriff\'s office.</p>');
+    $('inv-rep').innerHTML = rep;
+    $('inv-rep').querySelectorAll('[data-perk]').forEach(b => b.onclick = () => { Progress.choose(b.dataset.perk); this.renderInventory(); });
     const items = $('inv-items'); items.innerHTML = '';
     let any = false;
     for (const id of ITEM_ORDER) {
@@ -202,7 +215,7 @@ const UI = {
     const s = G.stats;
     $('inv-stats').innerHTML = [
       ['Day', Env.day()], ['Missions', `${MissionSys.completed.length}/${MissionSys.list.length}`], ['Robberies', s.robberies], ['Kills', s.kills],
-      ['Accuracy', s.shots ? Math.round(s.hits / s.shots * 100) + '%' : '—'], ['Animals hunted', s.hunted], ['Treasures', `${G.world.treasuresFound.length}/${World.treasures.length}`], ['Money earned', formatMoney(s.earned)], ['Deaths', s.deaths]
+      ['Accuracy', s.shots ? Math.round(s.hits / s.shots * 100) + '%' : '—'], ['Animals hunted', s.hunted], ['Bounties', s.bounties || 0], ['Treasures', `${G.world.treasuresFound.length}/${World.treasures.length}`], ['Money earned', formatMoney(s.earned)], ['Deaths', s.deaths]
     ].map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('');
     $('inv-missions').innerHTML = MissionSys.list.map(m => `<li class="${MissionSys.completed.includes(m.id) ? 'done' : (MissionSys.active === m ? 'active' : '')}">${esc(m.title)}</li>`).join('');
   },
@@ -234,7 +247,7 @@ const UI = {
       g.strokeStyle = '#a01010'; g.lineWidth = Math.max(2, sc); const x = px(t.x), y = px(t.y), r = sc * 3;
       g.beginPath(); g.moveTo(x - r, y - r); g.lineTo(x + r, y + r); g.moveTo(x + r, y - r); g.lineTo(x - r, y + r); g.stroke();
     }
-    for (const m of MissionSys.markers()) { g.fillStyle = m.kind === 'giver' ? '#e8b830' : '#f0d040'; g.strokeStyle = '#2a1a0e'; g.lineWidth = 2; g.beginPath(); g.arc(px(m.x), px(m.y), sc * 3, 0, TAU); g.fill(); g.stroke(); }
+    for (const m of allMarkers()) { g.fillStyle = m.kind === 'giver' ? '#e8b830' : '#f0d040'; g.strokeStyle = '#2a1a0e'; g.lineWidth = 2; g.beginPath(); g.arc(px(m.x), px(m.y), sc * 3, 0, TAU); g.fill(); g.stroke(); }
     if (P.horse && !P.horse.dead && !P.horse.rider) { g.fillStyle = '#6a3a1a'; g.fillRect(px(P.horse.x) - sc * 1.5, px(P.horse.y) - sc * 1.5, sc * 3, sc * 3); }
     g.save(); g.translate(px(P.x), px(P.y)); g.rotate(P.face); g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 1.5;
     g.beginPath(); g.moveTo(sc * 5, 0); g.lineTo(-sc * 3, -sc * 3); g.lineTo(-sc * 1.5, 0); g.lineTo(-sc * 3, sc * 3); g.closePath(); g.fill(); g.stroke(); g.restore();
@@ -293,6 +306,10 @@ const UI = {
     if (G.state !== 'play' || !P) return;
     $('hp-fill').style.width = (P.hp / P.maxHp * 100) + '%';
     $('st-fill').style.width = P.stamina + '%';
+    $('nv-fill').style.width = P.nerve + '%';
+    $('nv-fill').parentElement.classList.toggle('ready', P.nerve >= 20 || Combat.nervesOn);
+    const stance = P.rollT > 0 ? 'ROLLING' : Combat.nervesOn ? 'STEADY NERVES' : P.crouch ? (Combat.coverNear(P.x, P.y) ? 'IN COVER' : 'CROUCHED') : (P.steady >= 1 ? 'PRECISE SHOT READY' : '');
+    if ($('stance').textContent !== stance) $('stance').textContent = stance;
     const h = P.mounted || (P.horse && !P.horse.dead ? P.horse : null);
     $('horse-row').classList.toggle('hidden', !h);
     if (h) { $('hh-fill').style.width = (h.hp / h.maxHp * 100) + '%'; $('hs-fill').style.width = (h.stamina / h.maxSt * 100) + '%'; $('horse-name').textContent = h.name; }
@@ -314,6 +331,10 @@ const UI = {
     if (this.hudT > 0) return;
     this.hudT = 0.1;
     $('money').textContent = formatMoney(P.money);
+    $('lvl').textContent = P.level; $('xp-fill').style.width = Math.min(100, P.xp / Progress.need(P.level) * 100) + '%';
+    $('perk-alert').classList.toggle('hidden', !P.perkPoints);
+    const ts = P.inv[P.throwSel] ? P.throwSel : (THROWABLES.find(k => P.inv[k] > 0) || P.throwSel);
+    $('throwable').innerHTML = `<kbd>G</kbd> ${ITEMS[ts].name} <b>×${P.inv[ts] || 0}</b>`;
     $('clock').textContent = `${Env.clock()} · Day ${Env.day()}`;
     $('weather').textContent = { clear: 'Clear', cloudy: 'Overcast', rain: 'Rain', storm: 'Thunderstorm', dust: 'Dust storm' }[Env.weather];
     const stars = $('stars').children;
@@ -363,7 +384,7 @@ const UI = {
     for (const a of G.actors) if (!a.dead && a.faction === 'rival' && a.aggro) { const [x, y] = toM(a.x, a.y); g.fillStyle = '#e04020'; g.fillRect(x - 1.5, y - 1.5, 3, 3); }
     if (P.horse && !P.horse.dead && !P.horse.rider) { const [x, y] = toM(P.horse.x, P.horse.y); g.fillStyle = '#c8803a'; g.fillRect(x - 2, y - 2, 4, 4); g.strokeStyle = '#000'; g.strokeRect(x - 2, y - 2, 4, 4); }
     for (const t of World.treasures) if (G.world.treasuresRevealed.includes(t.id) && !G.world.treasuresFound.includes(t.id)) { const [x, y] = toM(t.x, t.y); g.strokeStyle = '#c01010'; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 3, y - 3); g.lineTo(x + 3, y + 3); g.moveTo(x + 3, y - 3); g.lineTo(x - 3, y + 3); g.stroke(); }
-    for (const m of MissionSys.markers()) {
+    for (const m of allMarkers()) {
       let [x, y] = toM(m.x, m.y);
       const out = x < 6 || y < 6 || x > S - 6 || y > S - 6;
       x = clamp(x, 6, S - 6); y = clamp(y, 6, S - 6);
@@ -405,7 +426,17 @@ const UI = {
         o.fillStyle = 'rgba(0,0,0,.6)'; o.fillRect(x - 1, y - 1, bw + 2, 4 * dpr);
         o.fillStyle = a.faction === 'gang' ? '#5ab05a' : '#d84a3a'; o.fillRect(x, y, bw * Math.max(0, a.hp / a.maxHp), 2 * dpr);
       }
-      if (a.downed > 0) { o.fillStyle = '#ffb04a'; o.fillText('WOUNDED', sx(a.x), sy(a.y - 18)); }
+      if (a.downed > 0) { o.fillStyle = '#ffb04a'; o.fillText(a.knockedOut ? 'KNOCKED OUT' : 'WOUNDED', sx(a.x), sy(a.y - 18)); }
+      else if (a.captive) { o.fillStyle = '#9ad0ff'; o.fillText('PRISONER', sx(a.x), sy(a.y - 24)); }
+      else if (a.surrendered && !a.escortBy) { o.fillStyle = '#e8e0d0'; o.fillText('SURRENDERED', sx(a.x), sy(a.y - 24)); }
+      else if (a.target === G.player && a.drawn) {
+        // spotted-you warning, then the enemy type while fighting
+        if (a.alertT > 0) {
+          const x = sx(a.x), y = sy(a.y - (a.mounted ? 38 : 30)) - Math.sin(t * 12) * dpr;
+          o.font = `900 ${Math.round(18 * dpr)}px Georgia`; o.fillStyle = '#000'; o.fillText('!', x + dpr, y + dpr); o.fillStyle = '#ffd23a'; o.fillText('!', x, y);
+          o.font = `bold ${Math.round(11 * dpr)}px Georgia, serif`;
+        } else if (a.role && d < 260) { o.fillStyle = 'rgba(0,0,0,.6)'; o.fillText(ROLE_NAMES[a.role], sx(a.x) + dpr, sy(a.y - (a.mounted ? 34 : 26)) + dpr); o.fillStyle = '#ff9a7a'; o.fillText(ROLE_NAMES[a.role], sx(a.x), sy(a.y - (a.mounted ? 34 : 26))); }
+      }
     }
     // floaters
     o.font = `bold ${Math.round(13 * dpr)}px Georgia, serif`;
@@ -417,7 +448,7 @@ const UI = {
     }
     o.globalAlpha = 1;
     // mission markers + edge arrows
-    for (const m of MissionSys.markers()) {
+    for (const m of allMarkers()) {
       const on = Game.onScreen(m.x, m.y, -10);
       if (on) {
         const bob = Math.sin(t * 4) * 3 * dpr, x = sx(m.x), y = sy(m.y) + bob;
@@ -449,13 +480,24 @@ const UI = {
       const mx = Input.mouse.x * dpr, my = Input.mouse.y * dpr, w = WEAPONS[P.cur];
       let spread = w.melee ? 3 : (w.spread * 220 + 4);
       if (P.moving) spread *= 1.5; if (P.mounted) spread *= 1.3; if (Input.mouse.rdown) spread *= 0.55;
+      if (Combat.nervesOn) spread *= 0.4;
+      spread *= 1 - P.steady * 0.6;                      // tightens as a precise shot lines up
       spread = spread * dpr + G.cam.kick * 3 * dpr;
-      o.strokeStyle = P.reload ? 'rgba(255,200,120,.9)' : 'rgba(255,245,220,.95)'; o.lineWidth = 2 * dpr;
+      const precise = P.steady >= 1;
+      o.strokeStyle = P.reload ? 'rgba(255,200,120,.9)' : precise ? '#ffd23a' : 'rgba(255,245,220,.95)'; o.lineWidth = (precise ? 3 : 2) * dpr;
       o.shadowColor = 'rgba(0,0,0,.8)'; o.shadowBlur = 3 * dpr;
       for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; o.beginPath(); o.moveTo(mx + Math.cos(a) * spread, my + Math.sin(a) * spread); o.lineTo(mx + Math.cos(a) * (spread + 7 * dpr), my + Math.sin(a) * (spread + 7 * dpr)); o.stroke(); }
-      o.fillStyle = '#fff'; o.fillRect(mx - dpr, my - dpr, 2 * dpr, 2 * dpr);
+      o.fillStyle = precise ? '#ffd23a' : '#fff'; o.fillRect(mx - dpr, my - dpr, 2 * dpr, 2 * dpr);
+      if (P.steady > 0 && !precise && !w.melee) { o.strokeStyle = 'rgba(255,210,58,.6)'; o.lineWidth = 2 * dpr; o.beginPath(); o.arc(mx, my, 22 * dpr, -Math.PI / 2, -Math.PI / 2 + TAU * P.steady); o.stroke(); }
       o.shadowBlur = 0;
-      if (P.reload) { const r = P.reload, rw = WEAPONS[r.key]; o.strokeStyle = '#ffcf6a'; o.lineWidth = 3 * dpr; o.beginPath(); o.arc(mx, my, 16 * dpr, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - r.t / (rw.reloadTime + 0.25))); o.stroke(); }
+      // hit marker
+      const hm = Combat.hit;
+      if (hm.t > 0) {
+        const k = hm.t / 0.22, r1 = 6 * dpr, r2 = (12 + (1 - k) * 4) * dpr;
+        o.strokeStyle = hm.kill ? `rgba(255,60,40,${k})` : hm.crit ? `rgba(255,210,58,${k})` : `rgba(255,255,255,${k})`; o.lineWidth = (hm.kill ? 3 : 2) * dpr;
+        for (let i = 0; i < 4; i++) { const a = Math.PI / 4 + i * Math.PI / 2; o.beginPath(); o.moveTo(mx + Math.cos(a) * r1, my + Math.sin(a) * r1); o.lineTo(mx + Math.cos(a) * r2, my + Math.sin(a) * r2); o.stroke(); }
+      }
+      if (P.reload) { const r = P.reload, rw = WEAPONS[r.key]; o.strokeStyle = '#ffcf6a'; o.lineWidth = 3 * dpr; o.beginPath(); o.arc(mx, my, 16 * dpr, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - r.t / ((rw.reloadTime + 0.25) * P.reloadMul()))); o.stroke(); }
     }
     // arrest countdown
     const ar = Law.arrest;

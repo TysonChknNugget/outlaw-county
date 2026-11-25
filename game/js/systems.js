@@ -115,7 +115,7 @@ const Law = {
   bounty: 0, heat: 0, lastSeen: { x: 0, y: 0 }, searchT: 0, state: 'calm', backupT: 6, arrest: null,
   recognizeT: 0, seenNow: false, escalate: 0, gunfireCD: 0, backupNotified: false,
   reset() { Object.assign(this, { bounty: 0, heat: 0, searchT: 0, state: 'calm', backupT: 6, arrest: null, recognizeT: 0, seenNow: false, escalate: 0, gunfireCD: 0 }); },
-  searchTime() { return 16 + this.heat * 7; },
+  searchTime() { return (16 + this.heat * 7) * (Progress.has('ghost') ? 0.7 : 1); },
 
   commit(type, x, y, o = {}) {
     if (o.reported) { this.report(type, x, y); return; }
@@ -128,7 +128,7 @@ const Law = {
       if (a.faction !== 'civ' || a.dead || a.inside || a === o.victim) continue;
       if (dist(a.x, a.y, x, y) < 230 * Env.visionMul() + 30 && World.los(a.x, a.y - 8, x, y - 8, SOL.VIS)) {
         if (a.kind === 'clerk') { this.report(type, x, y); return; }
-        a.witness = { crime: type, x, y, t: rand(7, 12) };
+        a.witness = { crime: type, x, y, t: rand(7, 12) * (Progress.has('ghost') ? 1.4 : 1) };
         a.state = 'report'; a.bark(BARKS.civFlee); witnesses++;
       }
     }
@@ -213,7 +213,7 @@ const Law = {
         if (this.searchT <= 0) this.clearHeat('escaped');
       }
       this.backupT -= dt;
-      if (this.backupT <= 0 && this.state === 'pursuit') { this.backupT = Math.max(7, 17 - this.heat * 2); this.spawnBackup(); }
+      if (this.backupT <= 0 && this.state === 'pursuit') { this.backupT = Math.max(10, 22 - this.heat * 2.5); this.spawnBackup(); }
     }
     this.seenNow = false;
     const ar = this.arrest;
@@ -259,9 +259,9 @@ const Law = {
     const P = G.player;
     let near = 0;
     for (const a of G.actors) if (a.faction === 'law' && !a.dead && !a.inside && dist(a.x, a.y, P.x, P.y) < 700) near++;
-    const max = this.heat * 2 + 1;
+    const max = this.heat + 1 + (G.settings.difficulty === 'hard' ? 1 : 0);
     if (near >= max) return;
-    const n = Math.min(max - near, this.heat >= 3 ? 2 : 1);
+    const n = Math.min(max - near, this.heat >= 4 ? 2 : 1);
     const mounted = this.heat >= 3 || !!P.mounted;
     for (let i = 0; i < n; i++) {
       const sp = World.randomOpenNear(P.x, P.y, 280, 420, (x, y) => Game.onScreen(x, y, 10) || World.tileAtPx(x, y) === T.FLOOR);
@@ -335,27 +335,31 @@ const Economy = {
   },
   entries(shopId) {
     const shop = Object.assign({ id: shopId }, SHOPS[shopId]), stock = SHOP_STOCK[shop.type], P = G.player, out = [];
+    const pm = Progress.priceMul(), cost = p => Math.max(1, Math.round(p * pm));
     for (const s of stock.buy) {
+      if (s === 'bounties') { out.push(...Bounties.shopEntries()); continue; }
       const [kind, key] = s.includes(':') ? s.split(':') : ['item', s];
       if (kind === 'item') {
-        const it = ITEMS[key];
-        out.push({ name: it.name, desc: it.desc, price: it.price, note: `Have ${P.inv[key] || 0}`, can: P.money >= it.price, buy: () => { P.money -= it.price; P.inv[key] = (P.inv[key] || 0) + 1; MissionSys.event('bought', key); } });
+        const it = ITEMS[key], price = cost(it.price);
+        out.push({ name: it.name, desc: it.desc, price, note: `Have ${P.inv[key] || 0}`, can: P.money >= price, buy: () => { P.money -= price; P.inv[key] = (P.inv[key] || 0) + 1; MissionSys.event('bought', key); } });
       } else if (kind === 'ammo') {
-        const a = AMMO[key], have = P.ammo[key];
-        out.push({ name: `${a.name} (box of ${a.box})`, desc: `Carry up to ${a.max}.`, price: a.price, note: `Have ${have}`, can: P.money >= a.price && have < a.max, reason: have >= a.max ? 'Full' : null, buy: () => { P.money -= a.price; P.ammo[key] = Math.min(a.max, have + a.box); MissionSys.event('bought', 'ammo:' + key); } });
+        const a = AMMO[key], have = P.ammo[key], max = Progress.ammoMax(key), price = cost(a.price);
+        out.push({ name: `${a.name} (box of ${a.box})`, desc: `Carry up to ${max}.`, price, note: `Have ${have}`, can: P.money >= price && have < max, reason: have >= max ? 'Full' : null, buy: () => { P.money -= price; P.ammo[key] = Math.min(max, have + a.box); MissionSys.event('bought', 'ammo:' + key); } });
       } else if (kind === 'weapon') {
-        const w = WEAPONS[key];
-        out.push({ name: w.name, desc: w.desc, price: w.price, weapon: key, note: P.owned[key] ? 'Owned' : `Dmg ${w.dmg}${w.pellets ? '×' + w.pellets : ''} · Cap ${w.cap}`, can: !P.owned[key] && P.money >= w.price, reason: P.owned[key] ? 'Owned' : null,
-          buy: () => { P.money -= w.price; P.owned[key] = true; P.mag[key] = w.cap; if (P.ammo[w.ammo] < AMMO[w.ammo].box) P.ammo[w.ammo] = AMMO[w.ammo].box; P.select(key); UI.notify(`Purchased the ${w.name}. Press ${w.slot} to equip.`, 'good'); } });
+        const w = WEAPONS[key], price = cost(w.price);
+        out.push({ name: w.name, desc: w.desc, price, weapon: key, note: P.owned[key] ? 'Owned' : `Dmg ${w.dmg}${w.pellets ? '×' + w.pellets : ''} · Cap ${w.cap}`, can: !P.owned[key] && P.money >= price, reason: P.owned[key] ? 'Owned' : null,
+          buy: () => { P.money -= price; P.owned[key] = true; P.mag[key] = w.cap; if (P.ammo[w.ammo] < AMMO[w.ammo].box) P.ammo[w.ammo] = AMMO[w.ammo].box; P.select(key); UI.notify(`Purchased the ${w.name}. Press ${w.slot} to equip.`, 'good'); } });
       } else if (kind === 'horse') {
         const hb = HORSE_BREEDS[key];
         const trade = P.horse && !P.horse.dead ? Math.floor((P.horse.def.price || 30) * 0.4) : 0;
-        const cost = Math.max(0, hb.price - trade);
+        const cost = Math.max(0, Math.round(hb.price * pm) - trade);
         out.push({ name: hb.name, desc: `Speed ${hb.speed} · Sprint ${hb.sprint} · Stamina ${hb.stamina} · Health ${hb.hp}`, price: cost, note: trade ? `Includes $${trade} trade-in` : '', can: P.money >= cost && !(P.horse && P.horse.breed === key && !P.horse.dead && P.horse.def.price), reason: null,
           buy: () => { P.money -= cost; Economy.giveHorse(key); } });
       } else if (kind === 'service') {
-        const sv = SERVICES[key];
-        const e = { name: sv.name, desc: sv.desc, price: sv.price, can: P.money >= sv.price, buy: null };
+        let sv = SERVICES[key];
+        const sp = cost(sv.price);
+        const e = { name: sv.name, desc: sv.desc, price: sp, can: P.money >= sp, buy: null };
+        sv = Object.assign({}, sv, { price: sp });
         if (key === 'paybounty') { e.price = Law.bounty; e.note = Law.bounty ? `Bounty $${Law.bounty}` : 'No bounty'; e.can = Law.bounty > 0 && P.money >= Law.bounty; e.buy = () => { const err = Law.payOff(); if (err) UI.notify(err, 'info'); }; e.noCharge = true; }
         if (key === 'meal') e.buy = () => { P.money -= sv.price; P.hp = Math.min(P.maxHp, P.hp + 60); P.stamina = 100; };
         if (key === 'rumor') { e.can = e.can && World.treasures.some(t => !G.world.treasuresFound.includes(t.id) && !G.world.treasuresRevealed.includes(t.id)); e.reason = e.can ? null : 'No new rumors'; e.buy = () => { P.money -= sv.price; UI.notify('"Heard tell of a buried stash out yonder..."', 'info'); Economy.revealTreasure(); }; }
@@ -378,7 +382,7 @@ const Economy = {
       const it = ITEMS[id], n = P.inv[id] || 0;
       if (!n || !it.sell) continue;
       if (!stock.sells.includes(it.type)) continue;
-      const price = Math.floor(it.sell * (it.type === 'pelt' ? mul : 1));
+      const price = Math.floor(it.sell * (it.type === 'pelt' ? mul : 1) * (it.type === 'stolen' && Progress.has('fence') ? 1.25 : 1));
       out.push({ name: it.name, have: n, price, sell: () => { P.inv[id]--; P.money += price; G.stats.earned += price; } });
     }
     return out;
@@ -435,6 +439,8 @@ const Interact = {
     const add = (label, x, y, r, act, priority) => out.push({ label, x, y, r, act, priority });
     if (Law.arrest && !Law.arrest.surrendering) add('Surrender to the law', P.x, P.y, 999, () => Law.surrender(), 500);
     for (const m of MissionSys.interactions()) out.push(m);
+    for (const m of Bounties.interactions()) out.push(m);
+    for (const m of Events.interactions()) out.push(m);
     for (const a of G.actors) {
       if (a.inside) continue;
       const d = dist(P.x, P.y, a.x, a.y);
@@ -443,10 +449,15 @@ const Interact = {
         if (!a.looted && d < 20) add(`Loot ${a.name}`, a.x, a.y, 20, () => this.lootBody(a));
         continue;
       }
+      if ((a.surrendered || a.knockedOut) && !a.captive && !a.escortBy && !a.invuln && d < 28) {
+        if (!a.robbed && a.cash > 0) add(`Rob ${a.name}`, a.x, a.y, 28, () => this.robHelpless(a));
+        else if (a.surrendered && !a.bountyTarget && !a.released) add(`Let ${a.name} go`, a.x, a.y, 28, () => { a.released = true; a.bark('Thank you, mister!', true); });
+        continue;
+      }
       if (a.downed > 0) continue;
       if (a.shopId && d < 40) {
         const shop = Object.assign({ id: a.shopId }, SHOPS[a.shopId]);
-        const robbable = shop.till && P.drawn && P.cur !== 'knife';
+        const robbable = shop.till && P.drawn && !WEAPONS[P.cur].melee;
         if (robbable) add(shop.type === 'bank' ? 'Hold up the bank teller' : `Rob ${shop.name}`, a.x, a.y, 40, () => this.holdUp(a, shop));
         else if (a.giver && MissionSys.giverPrompt(a)) add(MissionSys.giverPrompt(a), a.x, a.y, 40, () => MissionSys.talk(a), 10);
         else add(`${shop.type === 'sheriff' ? 'Speak with' : 'Shop at'} ${shop.name}`, a.x, a.y, 40, () => { const why = Economy.closed(shop); if (why) { UI.notify(`${a.name}: "${why}"`, 'bad'); Sound.play('deny'); } else UI.openShop(a.shopId, a); });
@@ -467,7 +478,7 @@ const Interact = {
     }
     for (const c of G.coaches) {
       const d = dist(P.x, P.y, c.x, c.y);
-      if (c.state === 'travel' && d < 90 && P.drawn && P.cur !== 'knife') add('Hold up the stagecoach', c.x, c.y, 90, () => { c.halt('holdup'); Sound.play('cock'); });
+      if (c.state === 'travel' && d < 90 && P.drawn && !WEAPONS[P.cur].melee) add('Hold up the stagecoach', c.x, c.y, 90, () => { c.halt('holdup'); Sound.play('cock'); });
       else if (c.state !== 'travel' && !c.looted && d < 30) add('Loot the strongbox', c.x, c.y, 30, () => this.lootCoach(c));
     }
     for (const t of World.treasures) if (!G.world.treasuresFound.includes(t.id) && dist(P.x, P.y, t.x, t.y) < 20) add('Dig for treasure', t.x, t.y, 20, () => this.dig(t));
@@ -485,7 +496,7 @@ const Interact = {
       Economy.addMoney(cash, clerk.x, clerk.y);
       if (chance(0.4)) Economy.addItem(shop.type === 'bank' ? 'gold_bar' : 'jewelry');
       G.world.robbed[shop.id] = G.time + 2 * 1440;
-      G.stats.robberies++;
+      G.stats.robberies++; Progress.add(shop.type === 'bank' ? 120 : 40);
       clerk.handsUpT = 0;
       Law.commit(shop.type === 'bank' ? 'bank_robbery' : 'store_robbery', clerk.x, clerk.y, { reported: true });
       MissionSys.event('storeRobbed', shop.id);
@@ -498,8 +509,17 @@ const Interact = {
       a.state = 'flee'; a.fleeFrom = G.player; a.timer = 6;
       a.witness = { crime: 'mugging', x: a.x, y: a.y, t: rand(8, 12) };
       Law.commit('mugging', a.x, a.y, { victim: a });
-      G.stats.robberies++;
+      G.stats.robberies++; Progress.add(10);
     }, { range: 40 });
+  },
+  /* rob someone who surrendered or was knocked out */
+  robHelpless(a) {
+    this.begin('Going through ' + a.name + "'s pockets", 1.0, () => {
+      a.robbed = true;
+      if (a.cash) Economy.addMoney(a.cash, a.x, a.y); a.cash = 0;
+      if (chance(0.25)) Economy.addItem(pick(['jewelry', 'watch', 'bandage', 'dynamite']));
+      if (a.faction === 'civ' || a.faction === 'law') Law.commit('mugging', a.x, a.y, { victim: a.knockedOut ? a : null });
+    }, { range: 34 });
   },
   lootBody(a) {
     this.begin('Searching the body', 1.0, () => {
@@ -508,13 +528,14 @@ const Interact = {
       if (a.cash) Economy.addMoney(a.cash, a.x, a.y);
       if (a.weapon && WEAPONS[a.weapon].ammo) {
         const am = WEAPONS[a.weapon].ammo, n = randi(3, 8);
-        P.ammo[am] = Math.min(AMMO[am].max, P.ammo[am] + n);
+        P.ammo[am] = Math.min(Progress.ammoMax(am), P.ammo[am] + n);
         Floaters.add(a.x, a.y - 30, `+${n} ${AMMO[am].name}`, '#d8e8c0');
         if (!P.owned[a.weapon] && a.faction !== 'civ' && chance(0.25)) { P.owned[a.weapon] = true; P.mag[a.weapon] = 0; UI.notify(`You picked up a ${WEAPONS[a.weapon].name}.`, 'good'); }
       }
       if (a.faction === 'civ' && chance(0.3)) Economy.addItem(chance(0.6) ? 'watch' : 'jewelry');
       if (a.faction === 'rival' && chance(0.25)) Economy.addItem(chance(0.3) ? 'treasure_map' : 'jewelry');
       if (chance(0.25)) Economy.addItem(pick(['bandage', 'whiskey']));
+      if (a.role === 'dynamiter' && chance(0.6)) Economy.addItem('dynamite');
       if ((a.faction === 'civ' || a.faction === 'law') && Law.heat === 0) Law.commit('looting', a.x, a.y);
     });
   },
@@ -528,7 +549,7 @@ const Interact = {
       Economy.addMoney(cash);
       Economy.addItem(chance(0.6) ? 'gold_bar' : 'jewelry');
       UI.notify(`You dug up the ${t.name}!`, 'good');
-      G.stats.treasures++;
+      G.stats.treasures++; Progress.add(30);
     }, { sound: 'dig' });
   },
   searchCrate(i) {
@@ -536,7 +557,8 @@ const Interact = {
       G.world.cratesLooted.push(i);
       Economy.addMoney(randi(10, 35));
       Economy.addItem(pick(['bandage', 'tonic', 'treasure_map']));
-      const P = G.player; P.ammo.revolver = Math.min(AMMO.revolver.max, P.ammo.revolver + 12);
+      const P = G.player; P.ammo.revolver = Math.min(Progress.ammoMax('revolver'), P.ammo.revolver + 12);
+      if (chance(0.5)) Economy.addItem(pick(['dynamite', 'firebottle']));
     });
   },
   robTrain(tr) {
@@ -546,7 +568,7 @@ const Interact = {
       Economy.addMoney(randi(220, 380), tr.expressDoor().x, tr.expressDoor().y);
       Economy.addItem('gold_bar'); if (chance(0.5)) Economy.addItem('jewelry');
       Law.commit('train_robbery', tr.x, tr.y, { reported: true });
-      G.stats.robberies++;
+      G.stats.robberies++; Progress.add(80);
       const d = tr.expressDoor();
       for (let i = 0; i < 2; i++) { const g = spawnActor('guard', d.x - 40 - i * 30, d.y + 8, { name: 'Railroad Guard', weapon: pick(['repeater', 'shotgun']), forceHostile: true, temp: true, cash: randi(10, 30) }); g.bark('Train robbers!'); }
       if (tr.state === 'stop') tr.timer = Math.min(tr.timer, 3);
@@ -557,7 +579,7 @@ const Interact = {
       c.looted = true;
       Economy.addMoney(c.mission ? randi(150, 220) : randi(90, 170), c.x, c.y);
       Economy.addItem('jewelry'); if (chance(0.5)) Economy.addItem('watch');
-      G.stats.robberies++;
+      G.stats.robberies++; Progress.add(60);
       MissionSys.event('coachLooted', c);
     }, { range: 34, sound: 'click' });
   }
@@ -709,33 +731,9 @@ const Spawner = {
     // random encounters in the wilderness
     this.encounterT -= 1;
     if (this.encounterT <= 0) {
-      this.encounterT = rand(70, 140);
-      if (!World.townAt(P.x, P.y) && Law.heat === 0 && !P.dead && dist(P.x, P.y, World.poi.hideout.x, World.poi.hideout.y) > 500 && !(MissionSys.active && MissionSys.active.noEncounters)) this.encounter();
-    }
-  },
-  encounter() {
-    const P = G.player, r = Math.random();
-    const sp = World.randomOpenNear(P.x, P.y, 340, 440, (x, y) => Game.onScreen(x, y, 10) || World.townAt(x, y));
-    if (!sp) return;
-    if (r < 0.45) {
-      const n = randi(2, 3);
-      for (let i = 0; i < n; i++) {
-        const a = spawnActor('rival', sp.x + i * 14, sp.y + rand(-10, 10), { encounter: true, temp: true, cash: randi(15, 45) });
-        a.mounted = new Horse(pick(['mustang', 'nag', 'morgan']), a.x, a.y, { owner: 'wild' });
-      }
-      UI.notify('Hoofbeats... Rattlesnake riders are coming for you!', 'warn');
-    } else if (r < 0.65) {
-      const a = spawnActor('civilian', sp.x, sp.y, { temp: true, cash: randi(10, 40) });
-      a.mounted = new Horse('mustang', sp.x, sp.y, { owner: 'town' });
-      a.state = 'walk'; a.goal = { x: World.poi.saloonFront.x, y: World.poi.saloonFront.y }; a.timer = 200;
-    } else if (r < 0.8) {
-      for (let i = 0; i < 2; i++) {
-        const a = spawnActor('lawman', sp.x + i * 14, sp.y, { temp: true });
-        a.mounted = new Horse('morgan', a.x, a.y, { owner: 'law' });
-        a.patrol = [{ x: World.poi.saloonFront.x, y: World.poi.saloonFront.y }];
-      }
-    } else {
-      for (let i = 0; i < 3; i++) G.animals.push(new Animal(chance(0.5) ? 'coyote' : 'deer', sp.x + rand(-20, 20), sp.y + rand(-20, 20)));
+      this.encounterT = rand(60, 120);
+      const quietZone = World.townAt(P.x, P.y) && !Events.nearMesaJail();
+      if (!quietZone && Law.heat === 0 && !P.dead && Events.active.length < 2 && dist(P.x, P.y, World.poi.hideout.x, World.poi.hideout.y) > 500 && !(MissionSys.active && MissionSys.active.noEncounters)) Events.trigger();
     }
   }
 };
