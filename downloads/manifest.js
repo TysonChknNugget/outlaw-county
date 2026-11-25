@@ -1,14 +1,14 @@
-/* Download links for the website, written by scripts/release.js for v1.2.0.
+/* Download links for the website, written by scripts/release.js for v1.2.1.
  * The builds are GitHub Release assets (GitHub won't store files over 100 MB in a repository). */
 window.OC_DOWNLOADS = {
   "windows": {
-    "file": "https://github.com/TysonChknNugget/outlaw-county/releases/download/v1.2.0/OutlawCounty-Setup-1.2.0.exe",
+    "file": "https://github.com/TysonChknNugget/outlaw-county/releases/download/v1.2.1/OutlawCounty-Setup-1.2.1.exe",
     "size": "78 MB",
-    "version": "1.2.0"
+    "version": "1.2.1"
   },
   "zip": {
-    "file": "https://github.com/TysonChknNugget/outlaw-county/releases/download/v1.2.0/OutlawCounty-1.2.0-win-x64.zip",
+    "file": "https://github.com/TysonChknNugget/outlaw-county/releases/download/v1.2.1/OutlawCounty-1.2.1-win-x64.zip",
     "size": "106 MB",
-    "version": "1.2.0"
+    "version": "1.2.1"
   }
 };

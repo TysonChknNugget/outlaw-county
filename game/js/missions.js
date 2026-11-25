@@ -428,7 +428,7 @@ MissionSys.register({
       enter: d => {
         const b = World.buildings.find(x => x.id === 'dw_bank');
         const lt = MissionSys.giver('lettie');
-        if (lt) { lt.follow = false; lt.post = { x: (b.vaultDoor.x - 1) * TS + 8, y: (b.vaultDoor.y) * TS + 8, face: 0 }; }
+        if (lt) { lt.follow = false; lt.post = { x: (b.vaultDoor.x) * TS + 8, y: (b.vaultDoor.y + 1) * TS + 8, face: -Math.PI / 2 }; }
         const bo = MissionSys.giver('boone'); if (bo) { bo.follow = false; bo.post = { x: (b.door.x) * TS + 8, y: (b.door.y - 1) * TS + 8, face: Math.PI / 2 }; }
         d.fuse = 0;
         UI.notify('Lettie: "Keep them off me! Thirty seconds!"', 'warn');
@@ -449,7 +449,7 @@ MissionSys.register({
     {
       text: 'The vault is open! Grab the gold (E).',
       marker: () => { const b = World.buildings.find(x => x.id === 'dw_bank'); return { x: b.vault.x, y: b.vault.y - 10, label: 'Gold' }; },
-      interact: () => { const b = World.buildings.find(x => x.id === 'dw_bank'); return [{ label: 'Grab the gold', x: b.vault.x, y: b.vault.y, r: 30, act: () => Interact.begin('Loading gold bars', 3, () => { b.goldTaken = true; Economy.addItem('gold_bar', 3); Economy.addMoney(randi(550, 700)); MissionSys.event('gold'); }, { sound: 'click' }) }]; },
+      interact: () => { const b = World.buildings.find(x => x.id === 'dw_bank'); return [{ label: 'Grab the gold', x: b.vault.x, y: b.vault.y, r: 40, act: () => Interact.begin('Loading gold bars', 3, () => { b.goldTaken = true; Economy.addItem('gold_bar', 3); Economy.addMoney(randi(550, 700)); MissionSys.event('gold'); }, { sound: 'click' }) }]; },
       done: d => d.events.gold
     },
     {

@@ -395,10 +395,11 @@ const World = {
         b.clerk = { x: b.x + 4, y: b.y + 2 }; break;
       case 'bank':
         F('counter', 1, 4, 6, 1, SOL.MOVE); F('desk', 2, 1, 2, 1);
-        F('vaultwall', 7, 1, 1, 4, SOL.ALL); F('vaultwall', 8, 5, 2, 1, SOL.ALL);
-        b.vaultDoor = F('vaultdoor', 7, 5, 1, 1, SOL.ALL);
+        // vault room in the back corner; its door faces straight out into the lobby
+        F('vaultwall', 7, 1, 1, 5, SOL.ALL); F('vaultwall', 9, 5, 1, 1, SOL.ALL);
+        b.vaultDoor = F('vaultdoor', 8, 5, 1, 1, SOL.ALL);
         F('gold', 8, 2, 2, 1, 0);
-        b.vault = { x: (b.x + 9) * TS, y: (b.y + 3) * TS };
+        b.vault = { x: (b.x + 9) * TS, y: (b.y + 3) * TS };   // centre of the vault room, next to the gold
         b.clerk = { x: b.x + 4, y: b.y + 3 }; break;
       case 'sheriff':
         F('desk', 2, 3, 2, 1); F('bars', 5, 3, b.w - 6, 1); F('cot', b.w - 3, 1); F('rack', 1, 1, 2, 1);

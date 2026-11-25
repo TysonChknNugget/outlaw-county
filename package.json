@@ -1,7 +1,7 @@
 {
   "name": "outlaw-county",
   "productName": "Outlaw County",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "A 2D open-world western crime sandbox set in the 1890s frontier.",
   "main": "electron/main.js",
   "author": "Outlaw County",
