@@ -283,3 +283,111 @@ body.desktop .web-only { display: none; }
 .tl-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .tl-slot canvas { width: 54px; height: 72px; image-rendering: pixelated; background: #e8d8b0; border: 1px solid #8a6a3a; border-radius: 4px; }
 .lg.st::before { background: #8ad0ff; border-radius: 50%; }
+
+/* =====================================================================
+   v2.1 "Leather & Brass" theme: tooled leather HUD with brass rivets and
+   stitching, telegram notes, ribbon tags and branded buttons.
+   ===================================================================== */
+:root {
+  --leather: #3b2414; --leather-d: #23140a; --stitch: rgba(232,196,128,.55); --brass: #d8a945; --brass-l: #ffe39a; --brass-d: #7a5418;
+  --rivet: radial-gradient(circle at 35% 35%, #ffe39a, #d8a945 45%, #7a5418 75%, transparent 80%);
+  --slab: "Rockwell Extra Bold", "Rockwell", "Rockwell Nova", "Roboto Slab", "Clarendon", "Georgia", serif;
+}
+/* tooled leather panels */
+.panel {
+  position: relative; border: 2px solid #120a04; border-radius: 10px;
+  background:
+    var(--rivet) left 5px top 5px / 9px 9px no-repeat, var(--rivet) right 5px top 5px / 9px 9px no-repeat,
+    var(--rivet) left 5px bottom 5px / 9px 9px no-repeat, var(--rivet) right 5px bottom 5px / 9px 9px no-repeat,
+    radial-gradient(ellipse at 30% 0%, rgba(255,200,130,.16), transparent 60%),
+    repeating-linear-gradient(115deg, rgba(0,0,0,.05) 0 2px, transparent 2px 5px),
+    linear-gradient(180deg, rgba(74,44,22,.94), rgba(35,20,10,.95));
+  box-shadow: 0 4px 0 #0a0603, 0 8px 18px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,220,160,.25), inset 0 0 18px rgba(0,0,0,.45);
+}
+.panel::before { content: ''; position: absolute; inset: 5px 16px; border: 1.5px dashed var(--stitch); border-radius: 6px; pointer-events: none; opacity: .7; }
+#hud-tl, #hud-tr, #weapon-panel { padding-left: 18px; padding-right: 18px; }
+#weapon-panel { width: 240px; }
+#weapon-name { font-size: 12px; line-height: 1.2; }
+/* bars with a glassy shine and segment notches */
+.bar { height: 15px; border: 1px solid #0d0703; border-radius: 3px; background: linear-gradient(#120a05, #2a1a0e); box-shadow: inset 0 2px 3px rgba(0,0,0,.6), 0 0 0 1px rgba(216,169,69,.35); margin-bottom: 5px; overflow: hidden; }
+.bar span::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 45%; background: linear-gradient(rgba(255,255,255,.35), rgba(255,255,255,0)); }
+.bar span { box-shadow: 1px 0 0 rgba(0,0,0,.5); }
+.bar em { text-shadow: 0 1px 0 #000, 0 0 4px rgba(0,0,0,.8); color: #fff0d0; letter-spacing: 3px; z-index: 1; }
+.bar.thin { height: 7px; }
+.bar.hp span { background: repeating-linear-gradient(90deg, transparent 0 18px, rgba(0,0,0,.25) 18px 19px), linear-gradient(#ff6a48, #b82a14 60%, #7a1608); }
+.bar.st span { background: repeating-linear-gradient(90deg, transparent 0 18px, rgba(0,0,0,.25) 18px 19px), linear-gradient(#ffe07a, #c89020 60%, #7a5410); }
+.bar.nv span { background: repeating-linear-gradient(90deg, transparent 0 18px, rgba(0,0,0,.25) 18px 19px), linear-gradient(#c8e4ff, #5a8ac8 60%, #2a4a7a); }
+#money { font-size: 26px; color: var(--brass-l); text-shadow: 0 2px 0 #3a2208, 0 0 12px rgba(255,200,90,.35); letter-spacing: 1px; }
+#money::before { content: ''; display: inline-block; width: 16px; height: 16px; margin-right: 6px; vertical-align: -1px; border-radius: 50%; background: var(--rivet); box-shadow: 0 0 6px rgba(255,210,110,.5); }
+#level b { background: radial-gradient(circle at 35% 35%, #d8ecff, #5a8ac8 70%); color: #0e1a2a; box-shadow: 0 0 0 2px #1a2a3a, 0 0 8px rgba(154,208,255,.5); }
+/* clock and sheriff's-star wanted level */
+#clock { font-size: 18px; letter-spacing: 1px; color: #fff0cc; text-shadow: 0 2px 0 #1a0e06; }
+#weather { font-style: italic; }
+#stars i { width: 22px; height: 22px; background: #2a1c12; }
+#stars i.on { background: radial-gradient(circle at 50% 45%, #fff3b8, #f0c040 45%, #a06a10); filter: drop-shadow(0 0 4px rgba(255,190,60,.7)); }
+/* objective: a parchment ribbon with notched ends */
+#objective { border: none; border-radius: 0; padding: 8px 46px 9px; box-shadow: 0 6px 14px rgba(0,0,0,.45);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 18px) 50%, 100% 100%, 0 100%, 18px 50%);
+  background: linear-gradient(rgba(255,255,255,.25), transparent 40%), radial-gradient(ellipse at 50% 0%, #fbefcf, #e6d0a0 60%, #c9a868); }
+#obj-title { color: #9a2a12; letter-spacing: 5px; }
+#obj-title::before, #obj-title::after { content: ' \2726  '; color: #b8873a; letter-spacing: 0; }
+/* brass-bezel minimap */
+#minimap-wrap { border-radius: 50%; padding: 5px; background: conic-gradient(from 20deg, #6a4610, #ffe39a, #a87a26, #fff0b8, #7a5418, #e8c060, #6a4610); box-shadow: 0 0 0 2px #120a04, 0 6px 16px rgba(0,0,0,.6); border: none; }
+#minimap { box-shadow: inset 0 0 0 2px #120a04; }
+.compass { background: radial-gradient(circle, #a8201a, #5a0e0a); color: #fff0d0; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; text-align: center; top: -6px; box-shadow: 0 0 0 2px #d8a945, 0 2px 4px #000; font-size: 11px; }
+/* weapon panel */
+#weapon-name { letter-spacing: 1px; color: var(--brass-l); }
+#ammo { font-size: 30px; text-shadow: 0 2px 0 #1a0e06; }
+#weapon-slots span { border-radius: 50%; width: 22px; height: 22px; line-height: 20px; text-align: center; background: radial-gradient(circle at 40% 35%, #4a3220, #1a0e06); border-color: #6a4a2a; }
+#weapon-slots span.act { background: radial-gradient(circle at 35% 35%, #ffe39a, #d8a945 55%, #7a5418); color: #2a1608; box-shadow: 0 0 8px rgba(255,210,110,.6); }
+/* prompts look like brass-trimmed plaques */
+#prompt span { background: linear-gradient(#4a2e18, #24140a); border: 1px solid #7a5418; border-radius: 6px; box-shadow: 0 0 0 1px #0a0603, 0 4px 10px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,220,160,.25); color: #fff0d0; padding: 6px 14px; }
+/* telegram notes: torn paper slips with a colored seal */
+.note { position: relative; color: #2a1608 !important; border-left: none; padding: 8px 12px 9px 30px; font-size: 13px; line-height: 1.3;
+  background: linear-gradient(rgba(255,255,255,.3), transparent 50%), #ecdcb4; box-shadow: 0 3px 8px rgba(0,0,0,.45);
+  clip-path: polygon(0 3px, 4% 0, 9% 3px, 15% 0, 22% 2px, 30% 0, 38% 3px, 47% 0, 55% 2px, 64% 0, 72% 3px, 81% 0, 89% 2px, 96% 0, 100% 3px, 100% calc(100% - 3px), 95% 100%, 87% calc(100% - 2px), 78% 100%, 70% calc(100% - 3px), 61% 100%, 52% calc(100% - 2px), 43% 100%, 34% calc(100% - 3px), 25% 100%, 17% calc(100% - 2px), 8% 100%, 0 calc(100% - 3px)); }
+.note::before { content: ''; position: absolute; left: 9px; top: 50%; width: 13px; height: 13px; margin-top: -7px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #c8a878, #8a6a3a); box-shadow: inset 0 0 0 2px rgba(0,0,0,.2); }
+.note.crime::before, .note.bad::before { background: radial-gradient(circle at 35% 35%, #ff7a5a, #8a1a0a); }
+.note.good::before { background: radial-gradient(circle at 35% 35%, #b8e08a, #3a6a1a); }
+.note.warn::before { background: radial-gradient(circle at 35% 35%, #ffd27a, #a06a10); }
+.note.mission::before { background: radial-gradient(circle at 35% 35%, #ffe39a, #d8a945 55%, #7a5418); }
+.note.tip::before { background: radial-gradient(circle at 35% 35%, #b8d8ff, #2a5a8a); }
+.note.crime, .note.bad { background: linear-gradient(rgba(255,255,255,.25), transparent 50%), #f0cbb8; }
+/* dialogue: paper card with a red ribbon name tag and ornamented corners */
+#dialogue { padding: 26px 28px 16px; border: 3px double #6a4a26; border-radius: 2px; overflow: visible;
+  background: radial-gradient(ellipse at 20% 0%, #fff5da, #ecdcb4 55%, #d6b884); }
+#dialogue::before, #dialogue::after { content: '\2766'; position: absolute; bottom: 4px; font-size: 18px; color: #a0783a; }
+#dialogue::before { left: 8px; transform: scaleX(-1); } #dialogue::after { right: 8px; }
+#dlg-who { position: absolute; top: -15px; left: 18px; margin: 0; padding: 5px 24px 5px 14px; color: #fff0d0; font-size: 12px; text-shadow: 0 1px 0 #000;
+  background: linear-gradient(#b8301c, #7a160a); filter: drop-shadow(0 3px 3px rgba(0,0,0,.45)); clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 50%, 100% 100%, 0 100%); }
+#dlg-text { font-size: 19px; }
+/* buttons: planks with nail heads */
+.btn { border-radius: 3px; border-color: #24140a; letter-spacing: 1.5px; padding-left: 24px; padding-right: 24px;
+  background: var(--rivet) left 7px center / 7px 7px no-repeat, var(--rivet) right 7px center / 7px 7px no-repeat,
+    repeating-linear-gradient(0deg, rgba(120,70,20,.08) 0 3px, transparent 3px 7px), linear-gradient(#f6e4b8, #d2ad68); }
+.btn.ghost { background: var(--rivet) left 7px center / 7px 7px no-repeat, var(--rivet) right 7px center / 7px 7px no-repeat,
+    repeating-linear-gradient(0deg, rgba(0,0,0,.08) 0 3px, transparent 3px 7px), linear-gradient(#5e3f24, #36210f); }
+.btn.big { padding-left: 30px; }
+.btn.big:hover { transform: translateX(6px); }
+.btn.small, .btn.tiny { background-size: 0 0, 0 0, auto, auto; padding-left: 10px; padding-right: 10px; }
+.btn.tiny.on { background: linear-gradient(#b8301c, #7a160a); color: #fff; }
+/* menus and windows */
+.panel-box { border: 3px solid #120a04; border-radius: 10px; box-shadow: 0 0 0 2px #7a5418, 0 14px 44px rgba(0,0,0,.75), inset 0 0 0 1px rgba(255,220,160,.18), inset 0 0 40px rgba(0,0,0,.4); }
+.panel-box h2 { letter-spacing: 1px; }
+.panel-box h2::after { content: ''; display: block; height: 3px; margin-top: 6px; width: 120px; background: linear-gradient(90deg, #d8a945, transparent); }
+.panel-box h3::before { content: '\2726  '; color: #d8a945; }
+.paper-box { border-color: #4a2e14; box-shadow: 0 0 0 2px #2a1608, 0 14px 44px rgba(0,0,0,.75), inset 0 0 50px rgba(140,90,30,.35); }
+.paper-box h2::after { background: linear-gradient(90deg, #9a2a12, transparent); }
+.paper-box h3::before { color: #9a2a12; }
+.screen { background: radial-gradient(ellipse at center, rgba(20,10,4,.45), rgba(6,3,1,.82)); }
+.logo-main { background: linear-gradient(#fff3d0, #e8c070 55%, #a8701c); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; filter: drop-shadow(3px 3px 0 #7a2a14) drop-shadow(3px 3px 0 #2a1408); }
+.logo-top::before, .logo-top::after { content: ' \2605  '; letter-spacing: 0; }
+/* banner and region title */
+#banner { background: linear-gradient(90deg, transparent, rgba(10,5,2,.7) 20%, rgba(10,5,2,.7) 80%, transparent); border-image: linear-gradient(90deg, transparent, rgba(216,169,69,.8), transparent) 1; border-top: 2px solid; border-bottom: 2px solid; padding: 14px 0 16px; }
+#banner .b-sub::before, #banner .b-sub::after { content: ' \2501\2501 \2726 \2501\2501 '; letter-spacing: 0; color: #d8a945; }
+#banner .b-title { background: linear-gradient(#fff6dc, #f0c870 60%, #b8802a); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; filter: drop-shadow(0 3px 0 #4a2208) drop-shadow(0 0 10px rgba(0,0,0,.7)); }
+#banner.bad .b-title { background: linear-gradient(#ffd8c8, #e05a3a 60%, #8a1a0a); -webkit-background-clip: text; background-clip: text; }
+#region-toast::before, #region-toast::after { content: ' ~ '; color: #d8a945; }
+/* weapon wheel */
+#wheel-canvas { filter: drop-shadow(0 8px 20px rgba(0,0,0,.6)); }
+.tl-sw .sw { border-radius: 50%; }

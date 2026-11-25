@@ -401,5 +401,25 @@ Actor.prototype.followPlayer = function (dt, slow) {
   const d = dist(this.x, this.y, P.x, P.y);
   if (d > 900) { const sp = World.randomOpenNear(P.x, P.y, 30, 70, (x, y) => World.tileAtPx(x, y) === T.FLOOR); if (sp) { this.x = sp.x; this.y = sp.y; this.path = null; } }
   const spd = this.mounted ? (P.mounted ? Math.max(120, P.mounted.speed * 1.05) : 120) : (P.sprinting || P.mounted ? this.speedRun * (slow ? 1 : 1.1) : this.speedWalk * 1.6);
-  if (d > (this.mounted ? 50 : 34)) this.navigate(P.x, P.y, spd, dt, this.mounted ? 46 : 30);
+  // each follower keeps its own spot in a loose fan behind the player, so they don't stack up
+  const crew = G.actors.filter(a => a.follow && !a.dead && !a.captive);
+  const i = Math.max(0, crew.indexOf(this)), n = Math.max(1, crew.length);
+  // the player's direction of travel, sampled whenever they've moved a few pixels
+  const T0 = Combat.trail || (Combat.trail = { x: P.x, y: P.y, h: P.face });
+  if (dist(P.x, P.y, T0.x, T0.y) > 6) { T0.h = Math.atan2(P.y - T0.y, P.x - T0.x); T0.x = P.x; T0.y = P.y; }
+  const spread = n > 1 ? (i / (n - 1) - 0.5) * Math.min(2.4, 0.7 * n) : 0;
+  const back = (this.mounted ? 34 : 24) + Math.floor(i / 4) * (this.mounted ? 22 : 14);
+  const ang = T0.h + Math.PI + spread;
+  let gx = P.x + Math.cos(ang) * back, gy = P.y + Math.sin(ang) * back;
+  if (this.blocked(gx, gy)) { gx = P.x; gy = P.y; }
+  const dg = dist(this.x, this.y, gx, gy);
+  if (d > (this.mounted ? 50 : 34) || dg > 12) this.navigate(gx, gy, dg < 30 && d < 80 ? spd * 0.6 : spd, dt, 8);
+  // gentle push apart from other followers and the player
+  const minD = this.mounted ? 20 : 14;
+  for (const o of crew.concat([P])) {
+    if (o === this) continue;
+    const ox = this.x - o.x, oy = this.y - o.y, od = Math.hypot(ox, oy);
+    const lim = o === P ? (P.mounted || this.mounted ? 18 : 10) : (o.mounted || this.mounted ? 20 : minD);
+    if (od < lim) { const k = (lim - od) * Math.min(1, dt * 8) / (od || 1); this.move((od ? ox : rand(-1, 1)) * k, (od ? oy : rand(-1, 1)) * k); }
+  }
 };
