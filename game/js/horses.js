@@ -39,13 +39,16 @@ const Horses = {
     return pick(['mustang', 'mustang', 'nag', 'morgan']);
   },
 
-  /* the Bonewhite Ghost: shows up on the salt now and then, until someone breaks her */
+  /* the Bonewhite Ghost: shows up on the salt now and then while she isn't yours.
+     She can't be killed, and if you ever let her go she returns to the salt. */
   updateGhost(dt) {
     const P = G.player, w = G.world;
-    if (w.ghostTamed) return;
     if (P.horse && P.horse.breed === 'ghost' && !P.horse.dead) {
-      w.ghostTamed = true; Ach.event('ghost');
-      UI.banner('The Bonewhite Ghost', 'LEGENDARY HORSE BROKEN'); Sound.play('mission');
+      if (!w.ghostTamed) {
+        w.ghostTamed = true; Ach.event('ghost');
+        UI.banner('The Bonewhite Ghost', 'LEGENDARY HORSE BROKEN'); Sound.play('mission');
+        UI.notify('She is a ghost: bullets, falls and fangs pass right through her.', 'good');
+      }
       return;
     }
     const g = G.horses.find(h => h.breed === 'ghost' && !h.dead && h.owner === 'wild');
@@ -73,6 +76,20 @@ const Horses = {
     return g && !MissionSys.active ? [{ x: g.x, y: g.y - 26, label: 'Bonewhite Ghost', kind: 'stranger', small: true }] : [];
   }
 };
+
+/* the Ghost can't be hurt */
+(function () {
+  const hurt = Horse.prototype.hurt;
+  Horse.prototype.hurt = function (dmg, src) {
+    if (this.def.legendary) {
+      this.hp = this.maxHp; this.hurtT = 0.15;
+      if (!this.ghostMsgT || this.ghostMsgT < Combat.t) { this.ghostMsgT = Combat.t + 2; Floaters.add(this.x, this.y - 28, 'passes right through her', '#e8f0ff'); }
+      if (this.owner === 'wild' && !this.rider) this.fleeT = 4;
+      return;
+    }
+    return hurt.call(this, dmg, src);
+  };
+})();
 
 /* wild herds fit the region */
 Spawner.spawnHerd = function (x, y, n) {
