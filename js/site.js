@@ -220,16 +220,18 @@
       shotIO.observe(s);
     }
     // county map
-    const mc = $('#county-map'), sc = 3; mc.width = World.W * sc; mc.height = World.H * sc;
+    const mc = $('#county-map'), sc = 1; mc.width = World.W * sc; mc.height = World.H * sc;
     const g = mc.getContext('2d'); g.imageSmoothingEnabled = false;
     g.drawImage(World.minimap, 0, 0, mc.width, mc.height);
     g.fillStyle = 'rgba(234,217,178,.12)'; g.fillRect(0, 0, mc.width, mc.height);
-    g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center';
-    const lab = (t, x, y, c = '#2a1608') => { const w = g.measureText(t).width; g.fillStyle = 'rgba(240,225,190,.85)'; g.fillRect(x - w / 2 - 4, y - 14, w + 8, 19); g.fillStyle = c; g.fillText(t, x, y); };
-    lab('Dustwater', 70 * sc, 100 * sc); lab('Mesa Flats', 229 * sc, 133 * sc); lab('Hollister Camp', 255 * sc, 24 * sc);
-    lab('Pinewood Forest', 55 * sc, 30 * sc, '#22361a'); lab('Red Sand Desert', 220 * sc, 198 * sc, '#6a2a10'); lab('Coyote Plains', 52 * sc, 178 * sc, '#3a3a10');
-    lab('Silverline Mine', 41 * sc, 20 * sc, '#4a2a1a'); lab("Marshal's Camp", 152 * sc, 82 * sc, '#4a2a1a');
-    for (const c of World.banditCamps) { g.fillStyle = '#8a1a1a'; g.beginPath(); g.arc(c.x / TS * sc, c.y / TS * sc, 6, 0, Math.PI * 2); g.fill(); }
+    g.font = 'bold 30px Georgia, serif'; g.textAlign = 'center';
+    const lab = (t, x, y, c = '#2a1608') => { const w = g.measureText(t).width; g.fillStyle = 'rgba(240,225,190,.88)'; g.fillRect(x - w / 2 - 7, y - 28, w + 14, 37); g.fillStyle = c; g.fillText(t, x, y); };
+    for (const t of World.towns) if (t.name !== 'Cottonwood Crossing') lab(t.name, (t.x0 + t.x1) / 2 * sc, (t.y0 - 3) * sc);
+    lab('Hollow Creek', 196 * sc, 590 * sc, '#3a2a2a');
+    lab('Frostpeak Mountains', 800 * sc, 36 * sc, '#2a3a44'); lab('Harlow Lake', 1110 * sc, 30 * sc, '#1a3a5a'); lab('Ranch Country', 330 * sc, 450 * sc, '#2a3a10');
+    lab('Red Canyonlands', 1010 * sc, 270 * sc, '#6a2a10'); lab('Bonewhite Salt Flats', 330 * sc, 540 * sc, '#4a4a4a'); lab('Mesa Badlands', 980 * sc, 520 * sc, '#6a4a1a');
+    lab('Rio Bravo', 1000 * sc, 770 * sc, '#1a3a5a'); lab('Outlaw County', 160 * sc, 226 * sc, '#2a1608');
+    for (const c of World.banditCamps) { g.fillStyle = '#8a1a1a'; g.beginPath(); g.arc(c.x / TS * sc, c.y / TS * sc, 9, 0, Math.PI * 2); g.fill(); }
     // wanted poster portrait
     const pc = $('#poster-canvas'), pg = pc.getContext('2d');
     pg.imageSmoothingEnabled = false; pg.fillStyle = '#d8bf8a'; pg.fillRect(0, 0, 96, 72);

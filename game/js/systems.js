@@ -237,8 +237,7 @@ const Law = {
     const P = G.player;
     const paid = Math.min(P.money, this.bounty);
     P.money -= paid;
-    const town = World.townAt(P.x, P.y) || World.towns.find(t => t.name === 'Dustwater');
-    const door = town.name === 'Mesa Flats' ? World.poi.mfSheriffDoor : World.poi.dwSheriffDoor;
+    const door = Bounties.nearestSheriff();
     if (P.mounted) P.dismount(false);
     P.x = door.x; P.y = door.y + 6;
     G.time += 8 * 60;
@@ -364,7 +363,7 @@ const Economy = {
         if (key === 'meal') e.buy = () => { P.money -= sv.price; P.hp = Math.min(P.maxHp, P.hp + 60); P.stamina = 100; };
         if (key === 'rumor') { e.can = e.can && World.treasures.some(t => !G.world.treasuresFound.includes(t.id) && !G.world.treasuresRevealed.includes(t.id)); e.reason = e.can ? null : 'No new rumors'; e.buy = () => { P.money -= sv.price; UI.notify('"Heard tell of a buried stash out yonder..."', 'info'); Economy.revealTreasure(); }; }
         if (key === 'sleep') e.buy = () => { P.money -= sv.price; UI.closeAll(); Game.sleep(); };
-        if (key === 'groom') { e.can = e.can && P.horse && !P.horse.dead; e.reason = P.horse && !P.horse.dead ? null : 'No horse'; e.buy = () => { P.money -= sv.price; const h = P.horse; h.hp = h.maxHp; h.stamina = h.maxSt; if (!h.rider && dist(h.x, h.y, P.x, P.y) > 200) { h.x = World.poi.dwStables.x + 30; h.y = World.poi.dwStables.y + 10; } UI.notify(`${h.name} is groomed and rested.`, 'good'); }; }
+        if (key === 'groom') { e.can = e.can && P.horse && !P.horse.dead; e.reason = P.horse && !P.horse.dead ? null : 'No horse'; e.buy = () => { P.money -= sv.price; const h = P.horse; h.hp = h.maxHp; h.stamina = h.maxSt; if (!h.rider && dist(h.x, h.y, P.x, P.y) > 200) { const c = Economy.nearestStables(); h.x = c.x + 30; h.y = c.y + 10; } UI.notify(`${h.name} is groomed and rested.`, 'good'); }; }
         if (key === 'travel') {
           const toMesa = shopId === 'dw_station';
           e.name = `Ticket to ${toMesa ? 'Mesa Flats' : 'Dustwater'}`;
@@ -387,13 +386,22 @@ const Economy = {
     }
     return out;
   },
+  nearestStables() {
+    const P = G.player;
+    let best = World.poi.dwStables, bd = 1e9;
+    for (const b of World.buildings) if (b.type === 'stables' && b.shop) {
+      const d = { x: (b.door.x + 0.5) * TS, y: (b.door.y + 1.6) * TS }, dd = dist(d.x, d.y, P.x, P.y);
+      if (dd < bd) { bd = dd; best = d; }
+    }
+    return best;
+  },
   giveHorse(breed) {
     const P = G.player;
     if (P.horse && !P.horse.dead) {
       if (P.mounted === P.horse) P.dismount(false);
       const i = G.horses.indexOf(P.horse); if (i >= 0) G.horses.splice(i, 1);
     }
-    const c = World.poi.dwStables;
+    const c = this.nearestStables();
     const sp = World.findOpen(c.x + 24, c.y + 8);
     const h = new Horse(breed, sp.x, sp.y, { owner: 'player' });
     h.saddle = true;
@@ -470,7 +478,7 @@ const Interact = {
       }
       if (a.faction === 'gang' && d < 30 && !a.follow) add(`Talk to ${a.name}`, a.x, a.y, 30, () => a.bark(a.talk ? pick(a.talk) : pick(["Keep your powder dry.", "Boone's been askin' after you.", "Quiet night. Too quiet."]), true));
     }
-    for (const an of G.animals) if (an.dead && !an.skinned && dist(P.x, P.y, an.x, an.y) < 22) add(`Skin the ${an.kind}`, an.x, an.y, 22, () => this.skin(an));
+    for (const an of G.animals) if (an.dead && !an.skinned && an.kind !== 'cow' && dist(P.x, P.y, an.x, an.y) < 22) add(`Skin the ${an.kind}`, an.x, an.y, 22, () => this.skin(an));
     const tr = G.train;
     if (tr && tr.state !== 'wait' && tr.speed < 25 && !tr.robbed) {
       const door = tr.expressDoor();
@@ -593,12 +601,12 @@ const Spawner = {
     G.actors = []; G.horses = []; G.animals = []; G.coaches = []; G.targets = [];
     const tile = (tx, ty) => ({ x: tx * TS + 8, y: ty * TS + 8 });
     // clerks
-    const clerkNames = { dw_general: 'Mr. Pruitt', dw_gunsmith: 'Hartley', dw_saloon: 'Barkeep Sam', dw_hotel: 'Miss Adeline', dw_stables: 'Cyrus the Stablehand', dw_bank: 'Teller Whitlock', dw_station: 'Station Master Gaines', mf_general: 'Señor Ortega', mf_cantina: 'Rosa', mf_station: 'Telegraph Clerk', cabin_trapper: 'Trapper Jo' };
+    const clerkNames = { sc_general: 'Ollie Banks', sc_saloon: 'Big Nell', sc_bank: 'Assayer Crane', sc_gunsmith: 'Hiram Lode', sc_hotel: 'Mrs. Talbot', sc_stables: 'Jed the Hostler', sc_station: 'Depot Agent Moss', ph_general: 'Chandler Voss', ph_saloon: 'One-Ear Petey', ph_bank: 'Teller Frye', ph_gunsmith: 'Gus Ammon', ph_hotel: 'Miss Lacey', ph_stables: 'Wally the Groom', ph_station: 'Terminal Clerk', fg_store: 'Sutler McBride', fg_stables: 'Corporal Dunn', cc_general: 'Widow Garner', sl_cantina: 'Paloma', sl_general: 'Señora Arrieta', sl_gunsmith: 'Tomás Reyes', sl_stables: 'Nacho', dw_general: 'Mr. Pruitt', dw_gunsmith: 'Hartley', dw_saloon: 'Barkeep Sam', dw_hotel: 'Miss Adeline', dw_stables: 'Cyrus the Stablehand', dw_bank: 'Teller Whitlock', dw_station: 'Station Master Gaines', mf_general: 'Señor Ortega', mf_cantina: 'Rosa', mf_station: 'Telegraph Clerk', cabin_trapper: 'Trapper Jo' };
     for (const b of W.buildings) {
       if (!b.clerk) continue;
       const pos = tile(b.clerk.x, b.clerk.y);
       if (b.type === 'sheriff') {
-        const sheriff = spawnActor('lawman', pos.x, pos.y, { name: b.town === 'Dustwater' ? 'Sheriff Tom Brannigan' : 'Deputy Ruiz', pal: b.town === 'Dustwater' ? PAL.sheriff : PAL.lawman, post: { x: pos.x, y: pos.y, face: Math.PI / 2 }, weapon: 'sa', town: b.town });
+        const sheriff = spawnActor('lawman', pos.x, pos.y, { name: ({ 'Dustwater': 'Sheriff Tom Brannigan', 'Mesa Flats': 'Deputy Ruiz', 'Silver Crown': 'Sheriff Amos Reed', 'Port Harlow': 'Constable Hale', 'Fort Granger': 'Sergeant Doyle', 'San Lucero': 'Alguacil Ibarra' })[b.town] || 'Deputy', pal: b.town === 'Dustwater' ? PAL.sheriff : b.town === 'Fort Granger' ? (PAL.soldier || PAL.lawman) : PAL.lawman, post: { x: pos.x, y: pos.y, face: Math.PI / 2 }, weapon: 'sa', town: b.town });
         sheriff.shopId = b.id; sheriff.home = pos;
         continue;
       }
@@ -613,6 +621,7 @@ const Spawner = {
     const homesMF = W.buildings.filter(b => b.town === 'Mesa Flats' && b.type === 'house');
     for (let i = 0; i < 15; i++) this.spawnCivilian('Dustwater', pick(homesDW));
     for (let i = 0; i < 6; i++) this.spawnCivilian('Mesa Flats', pick(homesMF));
+    for (const t of W.towns) if (t.pop) for (let i = 0; i < t.pop; i++) this.spawnCivilian(t.name, pick(this.homesOf(t.name)) || null);
     // lawmen
     this.spawnTownLaw();
     // hideout gang
@@ -627,6 +636,7 @@ const Spawner = {
     G.train = new Train();
     G.train.x = 30 * TS;
   },
+  homesOf(town) { return World.buildings.filter(b => b.town === town && !b.ruin && (b.type === 'house' || b.type === 'hotel')); },
   spawnCivilian(town, home) {
     const wps = World.townWaypoints[town], wp = pick(wps);
     const a = spawnActor('civilian', wp.x + rand(-10, 10), wp.y + rand(-8, 8), { town, building: home });
@@ -642,6 +652,17 @@ const Spawner = {
     const have = r => G.actors.some(a => a.patrolName === r && !a.dead);
     const mk = (name, route, town) => { if (have(name)) return; const p = route[0]; const a = spawnActor('lawman', p.x, p.y, { patrol: route, town }); a.patrolName = name; };
     mk('dwA', route1, 'Dustwater'); mk('dwB', route2, 'Dustwater'); mk('dwC', route1.slice().reverse(), 'Dustwater'); mk('mfA', route3, 'Mesa Flats');
+    // frontier towns: patrols walk the town's waypoints, alternating direction
+    for (const t of World.towns) if (t.law) {
+      const wps = World.townWaypoints[t.name]; if (!wps) continue;
+      for (let i = 0; i < t.law; i++) {
+        const name = t.name + '#' + i, route = i % 2 ? wps.slice().reverse() : wps.slice();
+        if (have(name)) continue;
+        const p = route[0];
+        const a = spawnActor('lawman', p.x, p.y, t.soldiers ? { patrol: route, town: t.name, pal: PAL.soldier, weapon: pick(['lever', 'repeater']), name: 'Pvt. ' + pick(LAST) } : { patrol: route, town: t.name });
+        a.patrolName = name;
+      }
+    }
   },
   spawnGang() {
     const H = World.poi.hideout, F = World.poi.hideoutFire;
@@ -656,9 +677,9 @@ const Spawner = {
   },
   spawnCamp(c) {
     c.members = [];
-    const n = randi(3, 5);
+    const n = c.size || randi(3, 5);
     for (let i = 0; i < n; i++) {
-      const sp = World.randomOpenNear(c.x, c.y, 16, 60) || { x: c.x, y: c.y + 20 };
+      const sp = World.randomOpenNear(c.x, c.y, 16, c.size > 6 ? 150 : 60) || { x: c.x, y: c.y + 20 };
       const a = spawnActor('rival', sp.x, sp.y, { camp: c, home: { x: c.x, y: c.y }, cash: randi(10, 40) });
       c.members.push(a);
     }
@@ -671,6 +692,14 @@ const Spawner = {
   },
   biomeAnimal(x, y) {
     const t = World.tileAtPx(x, y);
+    if (t === T.SNOW || t === T.SNOWFOREST) return chance(0.45) ? 'elk' : chance(0.45) ? 'rabbit' : 'bear';
+    if (t === T.PRAIRIE) {
+      if (World.frontierRanches && World.frontierRanches.some(r => dist(r.x, r.y, x, y) < 520) && chance(0.7)) return 'cow';
+      return chance(0.5) ? 'rabbit' : chance(0.6) ? 'deer' : 'coyote';
+    }
+    if (t === T.CLAY) return chance(0.4) ? 'rabbit' : chance(0.55) ? 'coyote' : 'cougar';
+    if (t === T.SALT) return chance(0.15) ? 'coyote' : null;
+    if (t === T.FOREST && World.regionKind && World.regionKind(Math.floor(x / TS), Math.floor(y / TS)) !== 'county') return chance(0.6) ? 'deer' : chance(0.6) ? 'elk' : 'bear';
     if (t === T.FOREST) return chance(0.7) ? 'deer' : 'rabbit';
     if (t === T.GRASS) return chance(0.6) ? 'rabbit' : (chance(0.5) ? 'deer' : 'coyote');
     if (t === T.SCRUB) return chance(0.5) ? 'rabbit' : 'coyote';
@@ -699,15 +728,15 @@ const Spawner = {
     // animals
     if (G.animals.length < 9) {
       const sp = World.randomOpenNear(P.x, P.y, 420, 800, (x, y) => !off(x, y) || World.townAt(x, y));
-      if (sp) { const k = this.biomeAnimal(sp.x, sp.y); if (k) { const n = k === 'deer' ? randi(1, 3) : 1; for (let i = 0; i < n; i++) G.animals.push(new Animal(k, sp.x + rand(-15, 15), sp.y + rand(-15, 15))); } }
+      if (sp) { const k = this.biomeAnimal(sp.x, sp.y); if (k) { const n = k === 'deer' || k === 'elk' ? randi(1, 3) : k === 'cow' ? randi(3, 6) : 1; for (let i = 0; i < n; i++) G.animals.push(new Animal(k, sp.x + rand(-15, 15), sp.y + rand(-15, 15))); } }
     }
     // towns repopulate when the player is away
-    for (const town of ['Dustwater', 'Mesa Flats']) {
+    for (const town of ['Dustwater', 'Mesa Flats', ...World.towns.filter(t => t.pop).map(t => t.name)]) {
       const alive = G.actors.filter(a => a.kind === 'civilian' && a.town === town && !a.dead).length;
-      const want = town === 'Dustwater' ? 15 : 6;
+      const want = town === 'Dustwater' ? 15 : town === 'Mesa Flats' ? 6 : World.towns.find(x => x.name === town).pop;
       const t = World.towns.find(x => x.name === town);
       const away = !World.townAt(P.x, P.y) || World.townAt(P.x, P.y) !== t;
-      if (alive < want && away && chance(0.2)) this.spawnCivilian(town, pick(World.buildings.filter(b => b.town === town && (b.type === 'house' || b.type === 'hotel'))));
+      if (alive < want && away && chance(0.2)) this.spawnCivilian(town, pick(this.homesOf(town)) || null);
     }
     if (Law.heat === 0 && !World.townAt(P.x, P.y) && chance(0.1)) this.spawnTownLaw();
     // bandit camps respawn

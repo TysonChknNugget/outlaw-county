@@ -1,6 +1,6 @@
 # Publishes only the website to GitHub Pages. The playable game page
 # (game/index.html) is left out on purpose: the game is download-only.
-# The website still loads four game scripts to draw its live world previews.
+# The website still loads five game scripts to draw its live world previews.
 name: Deploy website
 
 on:
@@ -26,7 +26,7 @@ jobs:
         run: |
           mkdir -p _site/game/js
           cp -r index.html css js assets downloads .nojekyll _site/
-          cp game/js/util.js game/js/data.js game/js/world.js game/js/sprites.js _site/game/js/
+          cp game/js/util.js game/js/data.js game/js/world.js game/js/world-frontier.js game/js/sprites.js _site/game/js/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -299,7 +299,7 @@ class Player extends Ent {
       const len = Math.hypot(ix, iy); if (len) { ix /= len; iy /= len; }
       this.sprinting = shift && len > 0 && this.stamina > 1 && !(Input.mouse.rdown);
       if (this.sprinting) this.crouch = false;
-      const spd = this.sprinting ? 102 : this.crouch ? 30 : Input.mouse.rdown ? 44 : 58;
+      const spd = (this.sprinting ? 102 : this.crouch ? 30 : Input.mouse.rdown ? 44 : 58) * World.terrainMul(this.x, this.y);
       const k = Math.min(1, dt * 12);
       this.vx += (ix * spd - this.vx) * k; this.vy += (iy * spd - this.vy) * k;
       const ox = this.x, oy = this.y;
@@ -315,7 +315,8 @@ class Player extends Ent {
         if (this.stepT <= 0) {
           this.stepT = this.sprinting ? 0.24 : 0.36;
           const t = World.tileAtPx(this.x, this.y);
-          if (t === T.SAND || t === T.ROAD || t === T.DRYBED || t === T.TOWN || t === T.CANYON) FX.dust(this.x, this.y, 1);
+          if (t === T.SAND || t === T.ROAD || t === T.DRYBED || t === T.TOWN || t === T.CANYON || t === T.CLAY) FX.dust(this.x, this.y, 1);
+          else if (t === T.SHALLOW) FX.impact(this.x, this.y, 'water', -Math.PI / 2);
           Sound.play('step', this.x, this.y, t === T.FLOOR || t === T.BOARD || t === T.BRIDGE ? 1.4 : 0.6);
         }
       }
@@ -1041,11 +1042,11 @@ class Horse extends Ent {
     this.runPhysics(dt);
   }
   runPhysics(dt) {
-    const vx = Math.cos(this.heading) * this.speed, vy = Math.sin(this.heading) * this.speed;
+    const tm = World.terrainMul(this.x, this.y), vx = Math.cos(this.heading) * this.speed * tm, vy = Math.sin(this.heading) * this.speed * tm;
     const ox = this.x, oy = this.y;
     this.move(vx * dt, vy * dt);
     const md = dist(ox, oy, this.x, this.y);
-    if (this.speed > 20 && md < this.speed * dt * 0.4) this.speed *= 0.6;
+    if (this.speed > 20 && md < this.speed * tm * dt * 0.4) this.speed *= 0.6;
     this.vx = vx; this.vy = vy; this.face = this.heading;
     this.animT += dt;
     this.hoofD += md;
@@ -1119,9 +1120,11 @@ class Horse extends Ent {
 class Animal extends Ent {
   constructor(kind, x, y) {
     super(x, y);
-    this.kind = kind; this.r = kind === 'rabbit' ? 3 : 5;
-    this.hp = { rabbit: 8, deer: 40, coyote: 35 }[kind];
-    this.speed = { rabbit: 115, deer: 120, coyote: 105 }[kind];
+    this.kind = kind; this.r = kind === 'rabbit' ? 3 : kind === 'bear' ? 7 : 5;
+    this.hp = { rabbit: 8, deer: 40, coyote: 35, elk: 60, cougar: 70, bear: 140, cow: 50 }[kind];
+    this.speed = { rabbit: 115, deer: 120, coyote: 105, elk: 122, cougar: 128, bear: 96, cow: 62 }[kind];
+    this.predator = kind === 'coyote' || kind === 'cougar' || kind === 'bear';
+    this.bite = { coyote: 7, cougar: 11, bear: 16 }[kind] || 0;
     this.state = 'graze'; this.timer = rand(1, 4); this.goal = null; this.buck = kind === 'deer' && chance(0.4);
     this.face = rand(TAU); this.skinned = false; this.deadT = 0; this.biteCD = 0; this.home = { x, y };
   }
@@ -1131,17 +1134,19 @@ class Animal extends Ent {
     this.timer -= dt; this.biteCD -= dt;
     const ox = this.x, oy = this.y;
     const night = Env.isNight();
-    if (this.kind === 'coyote' && !P.dead && (this.state === 'hunt' || (dP < (night ? 140 : 70) && !P.mounted && chance(dt * 2)))) {
+    const sense = this.kind === 'bear' ? 55 : this.kind === 'cougar' ? (night ? 170 : 90) : (night ? 140 : 70);
+    if (this.predator && !P.dead && (this.state === 'hunt' || (dP < sense && (!P.mounted || this.kind !== 'coyote') && chance(dt * 2)))) {
+      if (this.state !== 'hunt' && this.kind !== 'coyote') Sound.play(this.kind === 'bear' ? 'punch' : 'hitmark', this.x, this.y, 0.6);
       this.state = 'hunt';
       if (dP > 300) this.state = 'graze';
-      else if (dP < 12) { if (this.biteCD <= 0) { P.hurt(7, this, Math.atan2(P.y - this.y, P.x - this.x)); this.biteCD = 1.1; Sound.play('punch', this.x, this.y); } }
+      else if (dP < (this.kind === 'bear' ? 15 : 12)) { if (this.biteCD <= 0) { P.hurt(this.bite, this, Math.atan2(P.y - this.y, P.x - this.x)); this.biteCD = this.kind === 'bear' ? 1.4 : 1.1; Sound.play('punch', this.x, this.y); } }
       else this.steer(P.x, P.y, this.speed * 0.9, dt);
-    } else if (this.state === 'flee' || (dP < (P.sprinting || P.mounted ? 110 : 60) && !P.dead)) {
+    } else if (this.state === 'flee' || (dP < (this.kind === 'cow' ? 30 : P.sprinting || P.mounted ? 110 : 60) && !P.dead)) {
       if (this.state !== 'flee') this.timer = rand(2, 4);
       this.state = 'flee';
       const a = Math.atan2(this.y - P.y, this.x - P.x);
       this.steer(this.x + Math.cos(a) * 50, this.y + Math.sin(a) * 50, this.speed, dt);
-      if (this.timer <= 0) this.state = 'graze';
+      if (this.timer <= 0 || (this.kind === 'cow' && dP > 70)) this.state = 'graze';
     } else {
       if (this.timer <= 0) { this.goal = chance(0.5) ? World.randomOpenNear(this.home.x, this.home.y, 0, 90) : null; this.timer = rand(2, 6); }
       if (this.goal && this.steer(this.goal.x, this.goal.y, 22, dt) === false) this.goal = null;
@@ -1151,11 +1156,11 @@ class Animal extends Ent {
     this.moving = md > 0.05; this.animT += dt;
     if (this.moving) this.face = Math.atan2(this.y - oy, this.x - ox);
   }
-  onGunfire(x, y) { if (!this.dead && this.kind !== 'coyote') { this.state = 'flee'; this.timer = rand(3, 5); } }
+  onGunfire(x, y) { if (!this.dead && !this.predator) { this.state = 'flee'; this.timer = rand(3, 5); } }
   hurt(dmg, src, angle) {
     if (this.dead) return;
     this.hp -= dmg; FX.impact(this.x, this.y - 4, 'blood', angle || 0);
-    if (this.kind === 'coyote' && src === G.player) this.state = 'hunt'; else { this.state = 'flee'; this.timer = 4; }
+    if (this.predator && src === G.player && !(this.kind === 'coyote' && this.hp < 12)) this.state = 'hunt'; else { this.state = 'flee'; this.timer = 4; }
     if (this.hp <= 0) { this.dead = true; this.deadT = 0; if (src === G.player) G.stats.hunted++; }
     if (src === G.player) Combat.onPlayerHit(this, this.dead);
   }
@@ -1182,7 +1187,7 @@ class Train {
     this.totalLen = off;
     this.express = this.cars[4];
     this.y = RAIL_ROW * TS + 13;
-    this.stops = [World.poi.dwStationDoor.x, World.poi.mfStationDoor.x].map(dx => dx - 19 + this.express.off).sort((a, b) => a - b);
+    this.stops = (World.poi.stationDoors || [World.poi.dwStationDoor, World.poi.mfStationDoor]).map(d => d.x).map(dx => dx - 19 + this.express.off).sort((a, b) => a - b);
     this.reset(-this.totalLen - 200);
     this.state = 'run'; this.speed = 140;
     this.anim = 0; this.chugD = 0; this.smokeT = 0; this.robbed = false; this.timer = 0; this.nextStop = 0; this.hornT = 0;

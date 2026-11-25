@@ -224,34 +224,102 @@ const UI = {
   toggleMap() {
     if (this.modal === 'map') { this.closeAll(); return; }
     if (this.modal) return;
-    this.show('mapview'); this.modal = 'map'; this.renderMap();
+    this.show('mapview'); this.modal = 'map';
+    const c = $('map-canvas');
+    c.width = Math.max(320, Math.floor(innerWidth - 110)); c.height = Math.max(200, Math.floor(innerHeight - 290));
+    const fit = Math.min(c.width / World.W, c.height / World.H);
+    this.mapV = { cx: G.player.x / TS, cy: G.player.y / TS, z: Math.max(fit, Math.min(3, fit * 3)) };
+    this.bindMap();
+    this.renderMap();
+  },
+  bindMap() {
+    if (this.mapBound) return; this.mapBound = true;
+    const c = $('map-canvas');
+    const clampV = () => {
+      const v = this.mapV, fit = Math.min(c.width / World.W, c.height / World.H);
+      v.z = clamp(v.z, fit, 10);
+      const hw = c.width / 2 / v.z, hh = c.height / 2 / v.z;
+      v.cx = World.W <= hw * 2 ? World.W / 2 : clamp(v.cx, hw, World.W - hw);
+      v.cy = World.H <= hh * 2 ? World.H / 2 : clamp(v.cy, hh, World.H - hh);
+    };
+    const toTile = e => {
+      const r = c.getBoundingClientRect(), v = this.mapV;
+      const mx = (e.clientX - r.left) * c.width / r.width, my = (e.clientY - r.top) * c.height / r.height;
+      return { x: v.cx + (mx - c.width / 2) / v.z, y: v.cy + (my - c.height / 2) / v.z };
+    };
+    c.addEventListener('wheel', e => {
+      e.preventDefault();
+      const v = this.mapV, before = toTile(e);
+      v.z *= e.deltaY < 0 ? 1.25 : 0.8; clampV();
+      const after = toTile(e); v.cx += before.x - after.x; v.cy += before.y - after.y; clampV();
+      this.renderMap();
+    }, { passive: false });
+    let drag = null;
+    c.addEventListener('mousedown', e => { drag = { x: e.clientX, y: e.clientY, cx: this.mapV.cx, cy: this.mapV.cy, moved: false, b: e.button }; e.preventDefault(); e.stopPropagation(); });
+    addEventListener('mousemove', e => {
+      if (!drag || this.modal !== 'map') return;
+      const r = c.getBoundingClientRect(), k = c.width / r.width / this.mapV.z;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+      if (drag.moved) { this.mapV.cx = drag.cx - dx * k; this.mapV.cy = drag.cy - dy * k; clampV(); this.renderMap(); }
+    });
+    addEventListener('mouseup', e => {
+      if (!drag || this.modal !== 'map') { drag = null; return; }
+      const d = drag; drag = null;
+      if (d.moved) return;
+      if (d.b === 2) { Discovery.clearWaypoint(); this.renderMap(); return; }
+      if (d.b === 0) { const t = toTile(e); Discovery.setWaypoint(t.x * TS, t.y * TS); this.renderMap(); }
+    });
+    c.addEventListener('contextmenu', e => e.preventDefault());
+    this.mapClamp = clampV;
   },
   renderMap() {
-    const c = $('map-canvas'), W = World.W, H = World.H;
-    const sc = Math.max(1, Math.floor(Math.min((innerWidth - 120) / W, (innerHeight - 200) / H) * 2) / 2);
-    c.width = W * sc; c.height = H * sc;
-    const g = c.getContext('2d');
+    const c = $('map-canvas'), g = c.getContext('2d'), v = this.mapV;
+    if (this.mapClamp) this.mapClamp();
+    const z = v.z, ox = c.width / 2 - v.cx * z, oy = c.height / 2 - v.cy * z;
+    const px = wx => wx / TS * z + ox, py = wy => wy / TS * z + oy;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = '#d6c49c'; g.fillRect(0, 0, c.width, c.height);
     g.imageSmoothingEnabled = false;
-    g.drawImage(World.minimap, 0, 0, W * sc, H * sc);
-    g.fillStyle = 'rgba(230,205,160,0.18)'; g.fillRect(0, 0, c.width, c.height);
-    const P = G.player, px = v => v / TS * sc;
-    g.font = `bold ${Math.max(10, sc * 4)}px Georgia, serif`; g.textAlign = 'center';
-    const label = (t, x, y, col = '#2a1a0e') => { g.fillStyle = 'rgba(240,225,190,.75)'; const w = g.measureText(t).width; g.fillRect(x - w / 2 - 3, y - sc * 4, w + 6, sc * 5); g.fillStyle = col; g.fillText(t, x, y); };
-    for (const t of World.towns) label(t.name, px((t.x0 + t.x1) / 2 * TS), px(t.y0 * TS) - 4);
-    if (MissionSys.flags.hideout) label('Hollister Camp', px(World.poi.hideout.x), px(World.poi.hideout.y) - sc * 22);
-    label("Marshal's Camp", px(World.poi.marshalCamp.x), px(World.poi.marshalCamp.y) - sc * 9, '#4a2a1a');
-    for (const cp of World.banditCamps) { g.fillStyle = '#8a1a1a'; g.beginPath(); g.arc(px(cp.x), px(cp.y), sc * 2.5, 0, TAU); g.fill(); label(cp.name, px(cp.x), px(cp.y) - sc * 4, '#7a1a1a'); }
-    label('Pinewood Forest', px(60 * TS), px(30 * TS), '#2a3a1a'); label('Red Sand Desert', px(220 * TS), px(200 * TS), '#6a3a1a'); label('Coyote Plains', px(60 * TS), px(180 * TS), '#3a3a1a');
+    g.drawImage(World.minimap, ox, oy, World.W * z, World.H * z);
+    g.fillStyle = 'rgba(230,205,160,0.16)'; g.fillRect(0, 0, c.width, c.height);
+    g.imageSmoothingEnabled = true;
+    g.drawImage(Discovery.fogCanvas(), ox, oy, World.W * z, World.H * z);
+    const P = G.player, seen = (x, y) => Discovery.seenAt(x, y), fs = clamp(Math.round(9 + z * 1.6), 11, 18);
+    g.textAlign = 'center';
+    const label = (t, x, y, col = '#2a1a0e', size = fs) => {
+      g.font = `bold ${size}px Georgia, serif`;
+      g.fillStyle = 'rgba(240,225,190,.78)'; const w = g.measureText(t).width; g.fillRect(x - w / 2 - 3, y - size, w + 6, size + 4); g.fillStyle = col; g.fillText(t, x, y);
+    };
+    // region names
+    const regions = [['Frostpeak Mountains', 800, 30], ['Harlow Lake', 1110, 18], ['Ranch Country', 420, 270], ['Red Canyonlands', 1000, 260], ['Bonewhite Salt Flats', 330, 540], ['Mesa Badlands', 960, 520], ['Rio Bravo', 1000, 772],
+      ['Pinewood Forest', 60, 30], ['Red Sand Desert', 220, 200], ['Coyote Plains', 60, 180]];
+    const close = z >= 1.2;
+    for (const [n, tx, ty] of regions.slice(0, close ? 10 : 7)) if (seen(tx * TS, ty * TS)) label(n, px(tx * TS), py(ty * TS), '#4a3a22', Math.round(fs * 1.1));
+    for (const t of World.towns) if (G.world.discovered.includes(t.name) || seen((t.x0 + t.x1) / 2 * TS, (t.y0 + t.y1) / 2 * TS)) label(t.name, px((t.x0 + t.x1) / 2 * TS), py(t.y0 * TS) - 4);
+    if (MissionSys.flags.hideout) label('Hollister Camp', px(World.poi.hideout.x), py(World.poi.hideout.y) - 22);
+    if (close) label("Marshal's Camp", px(World.poi.marshalCamp.x), py(World.poi.marshalCamp.y) - 10, '#4a2a1a');
+    for (const [n, poi] of [['Hollow Creek', World.poi.hollowCreek], ['Last Water', World.poi.lastWater], ['Silver Crown Mine', World.poi.silverMine]]) if (close && poi && seen(poi.x, poi.y)) label(n, px(poi.x), py(poi.y) - 12, '#3a2a2a');
+    for (const cp of World.banditCamps) if (seen(cp.x, cp.y)) { g.fillStyle = '#8a1a1a'; g.beginPath(); g.arc(px(cp.x), py(cp.y), 5, 0, TAU); g.fill(); if (close) label(cp.name, px(cp.x), py(cp.y) - 8, '#7a1a1a'); }
     for (const t of World.treasures) {
       if (!G.world.treasuresRevealed.includes(t.id) || G.world.treasuresFound.includes(t.id)) continue;
-      g.strokeStyle = '#a01010'; g.lineWidth = Math.max(2, sc); const x = px(t.x), y = px(t.y), r = sc * 3;
+      g.strokeStyle = '#a01010'; g.lineWidth = 3; const x = px(t.x), y = py(t.y), r = 6;
       g.beginPath(); g.moveTo(x - r, y - r); g.lineTo(x + r, y + r); g.moveTo(x + r, y - r); g.lineTo(x - r, y + r); g.stroke();
     }
-    for (const m of allMarkers()) { g.fillStyle = m.kind === 'giver' ? '#e8b830' : '#f0d040'; g.strokeStyle = '#2a1a0e'; g.lineWidth = 2; g.beginPath(); g.arc(px(m.x), px(m.y), sc * 3, 0, TAU); g.fill(); g.stroke(); }
-    if (P.horse && !P.horse.dead && !P.horse.rider) { g.fillStyle = '#6a3a1a'; g.fillRect(px(P.horse.x) - sc * 1.5, px(P.horse.y) - sc * 1.5, sc * 3, sc * 3); }
-    g.save(); g.translate(px(P.x), px(P.y)); g.rotate(P.face); g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 1.5;
-    g.beginPath(); g.moveTo(sc * 5, 0); g.lineTo(-sc * 3, -sc * 3); g.lineTo(-sc * 1.5, 0); g.lineTo(-sc * 3, sc * 3); g.closePath(); g.fill(); g.stroke(); g.restore();
-    $('map-info').textContent = `${G.region} · Day ${Env.day()} · ${Env.clock()}`;
+    const wp = G.world.waypoint;
+    if (wp) { g.strokeStyle = 'rgba(160,90,220,.8)'; g.lineWidth = 2; g.setLineDash([6, 6]); g.beginPath(); g.moveTo(px(P.x), py(P.y)); g.lineTo(px(wp.x), py(wp.y)); g.stroke(); g.setLineDash([]); }
+    for (const m of allMarkers()) {
+      const x = px(m.x), y = py(m.y);
+      g.fillStyle = markerColor(m); g.strokeStyle = '#2a1a0e'; g.lineWidth = 2;
+      if (m.kind === 'waypoint') { g.beginPath(); g.moveTo(x, y); g.lineTo(x - 6, y - 14); g.lineTo(x + 6, y - 14); g.closePath(); g.fill(); g.stroke(); g.beginPath(); g.arc(x, y - 15, 6, 0, TAU); g.fill(); g.stroke(); }
+      else { g.beginPath(); g.arc(x, y, 6, 0, TAU); g.fill(); g.stroke(); }
+    }
+    if (P.horse && !P.horse.dead && !P.horse.rider) { g.fillStyle = '#6a3a1a'; g.fillRect(px(P.horse.x) - 4, py(P.horse.y) - 4, 8, 8); }
+    g.save(); g.translate(px(P.x), py(P.y)); g.rotate(P.face); g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(11, 0); g.lineTo(-7, -7); g.lineTo(-3, 0); g.lineTo(-7, 7); g.closePath(); g.fill(); g.stroke(); g.restore();
+    const wd = wp ? ` · Waypoint ${Math.round(dist(P.x, P.y, wp.x, wp.y) / TS * 2)} yd` : '';
+    const pct = Math.round(G.world.explored.reduce((a, b) => a + b, 0) / G.world.explored.length * 100);
+    $('map-info').textContent = `${G.region} · Day ${Env.day()} · ${Env.clock()} · ${pct}% explored${wd}`;
   },
 
   /* ---------------- save slots ---------------- */
@@ -388,7 +456,7 @@ const UI = {
       let [x, y] = toM(m.x, m.y);
       const out = x < 6 || y < 6 || x > S - 6 || y > S - 6;
       x = clamp(x, 6, S - 6); y = clamp(y, 6, S - 6);
-      g.fillStyle = m.kind === 'giver' ? '#ffcf40' : '#f8e050'; g.strokeStyle = '#2a1a0a'; g.lineWidth = 1.5;
+      g.fillStyle = markerColor(m); g.strokeStyle = '#2a1a0a'; g.lineWidth = 1.5;
       g.beginPath(); g.arc(x, y, m.small ? 2.5 : out ? 4 : 5, 0, TAU); g.fill(); g.stroke();
     }
     g.save(); g.translate(S / 2, S / 2); g.rotate(P.face); g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 1;
@@ -453,7 +521,7 @@ const UI = {
       if (on) {
         const bob = Math.sin(t * 4) * 3 * dpr, x = sx(m.x), y = sy(m.y) + bob;
         const r = (m.small ? 5 : 8) * dpr;
-        o.fillStyle = m.kind === 'giver' ? '#ffcf40' : '#f8e050'; o.strokeStyle = '#2a1608'; o.lineWidth = 2 * dpr;
+        o.fillStyle = markerColor(m); o.strokeStyle = '#2a1608'; o.lineWidth = 2 * dpr;
         o.beginPath(); o.moveTo(x, y - r); o.lineTo(x + r * 0.8, y); o.lineTo(x, y + r); o.lineTo(x - r * 0.8, y); o.closePath(); o.fill(); o.stroke();
         if (m.kind === 'giver') { o.fillStyle = '#2a1608'; o.font = `bold ${Math.round(11 * dpr)}px Georgia`; o.fillText('!', x, y + 5 * dpr); }
         if (m.label && !(m.kind === 'giver' && dist(m.x, m.y, G.player.x, G.player.y) < 100)) { o.font = `bold ${Math.round(12 * dpr)}px Georgia, serif`; o.fillStyle = 'rgba(0,0,0,.7)'; o.fillText(m.label, x + dpr, y - r - 3 * dpr + dpr); o.fillStyle = '#ffe9a8'; o.fillText(m.label, x, y - r - 3 * dpr); }
@@ -462,7 +530,7 @@ const UI = {
         const ex = cx + Math.cos(a) * (W / 2 - 40 * dpr), ey = cy + Math.sin(a) * (H / 2 - 40 * dpr);
         const px = clamp(ex, 40 * dpr, W - 40 * dpr), py = clamp(ey, 90 * dpr, H - 120 * dpr);
         o.save(); o.translate(px, py); o.rotate(a);
-        o.fillStyle = m.kind === 'giver' ? '#ffcf40' : '#f8e050'; o.strokeStyle = '#2a1608'; o.lineWidth = 2 * dpr;
+        o.fillStyle = markerColor(m); o.strokeStyle = '#2a1608'; o.lineWidth = 2 * dpr;
         o.beginPath(); o.moveTo(14 * dpr, 0); o.lineTo(-8 * dpr, -9 * dpr); o.lineTo(-3 * dpr, 0); o.lineTo(-8 * dpr, 9 * dpr); o.closePath(); o.fill(); o.stroke();
         o.restore();
         const dm = Math.round(dist(G.player.x, G.player.y, m.x, m.y) / TS * 2);

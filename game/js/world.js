@@ -5,9 +5,10 @@
  */
 'use strict';
 
-const T = { GRASS: 0, SAND: 1, ROAD: 2, FOREST: 3, WATER: 4, ROCK: 5, FLOOR: 6, WALL: 7, BRIDGE: 8, DRYBED: 9, SCRUB: 10, TOWN: 11, GRAVEL: 12, BOARD: 13, CANYON: 14 };
+const T = { GRASS: 0, SAND: 1, ROAD: 2, FOREST: 3, WATER: 4, ROCK: 5, FLOOR: 6, WALL: 7, BRIDGE: 8, DRYBED: 9, SCRUB: 10, TOWN: 11, GRAVEL: 12, BOARD: 13, CANYON: 14,
+  SNOW: 15, ICE: 16, CLAY: 17, SALT: 18, SHALLOW: 19, PRAIRIE: 20, SNOWFOREST: 21 };
 const SOL = { MOVE: 1, SHOT: 2, VIS: 4, ALL: 7 };
-const NATURAL = new Set([T.GRASS, T.SAND, T.FOREST, T.SCRUB, T.DRYBED, T.TOWN, T.ROAD, T.CANYON, T.WATER]);
+const NATURAL = new Set([T.GRASS, T.SAND, T.FOREST, T.SCRUB, T.DRYBED, T.TOWN, T.ROAD, T.CANYON, T.WATER, T.SNOW, T.ICE, T.CLAY, T.SALT, T.SHALLOW, T.PRAIRIE, T.SNOWFOREST]);
 const RAIL_ROW = 146;
 
 /* Prop definitions: fp = footprint [w,h] in tiles anchored at bottom-left tile,
@@ -44,8 +45,13 @@ const World = {
   blockedPx(x, y, mask = SOL.MOVE) { return (this.sol(Math.floor(x / TS), Math.floor(y / TS)) & mask) !== 0; },
 
   /* ------------------------------------------------------------ generation */
-  generate(seed = 1889) {
+  /* opts.lite = only the original 320x240 county (used by the website previews) */
+  generate(seed = 1889, opts = {}) {
+    const lite = !!opts.lite, OW = 320, OH = 240;
+    this.W = lite ? OW : 1280; this.H = lite ? OH : 960;
+    this.OW = OW; this.OH = OH; this.lite = lite;
     const W = this.W, H = this.H;
+    this.props = []; this.buildings = []; this.chunkCache = new Map();
     this.tiles = new Uint8Array(W * H);
     this.solid = new Uint8Array(W * H);
     this.reserved = new Uint8Array(W * H);
@@ -53,8 +59,8 @@ const World = {
     const n1 = makeNoise(seed + 1), n2 = makeNoise(seed + 2), n3 = makeNoise(seed + 3);
     this.noise = n1;
 
-    // 1. biomes
-    for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) {
+    // 1. biomes (original county; the frontier regions are generated separately)
+    for (let ty = 0; ty < OH; ty++) for (let tx = 0; tx < OW; tx++) {
       const a = fbm(n1, tx * 0.04, ty * 0.04, 3), b = fbm(n2, tx * 0.05, ty * 0.05, 3);
       const d1 = clamp((tx - 138 + (a - 0.5) * 60) / 26, 0, 1);
       const d2 = clamp((ty - 198 + (a - 0.5) * 34) / 18, 0, 1) * clamp((tx - 30) / 30, 0, 1);
@@ -69,9 +75,9 @@ const World = {
     }
 
     // 2. mountain borders, north-east range and desert mesas
-    for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) {
+    for (let ty = 0; ty < OH; ty++) for (let tx = 0; tx < OW; tx++) {
       const nn = n3(tx * 0.15, ty * 0.15);
-      const border = tx < 3 + nn * 5 || ty < 7 + nn * 7 || tx > W - 5 - nn * 8 || ty > H - 5 - nn * 7;
+      const border = tx < 3 + nn * 5 || ty < 7 + nn * 7 || tx > OW - 5 - nn * 8 || ty > OH - 5 - nn * 7;
       const range = tx > 272 && ty > 8 && ty < 105 && fbm(n2, tx * 0.08, ty * 0.08, 3) > 0.52;
       if (border || range) this.tiles[ty * W + tx] = T.ROCK;
     }
@@ -80,7 +86,7 @@ const World = {
 
     // 3. river (wet in the north, a dry wash south of the railroad) and a forest pond
     this.riverX = ty => 124 + Math.sin(ty * 0.045) * 7 + Math.sin(ty * 0.11 + 1) * 2.5;
-    for (let ty = 0; ty < H; ty++) {
+    for (let ty = 0; ty < OH; ty++) {
       const rx = this.riverX(ty), wet = ty <= 147, w = wet ? 1.9 : 2.8;
       for (let tx = Math.floor(rx - 4); tx <= Math.ceil(rx + 4); tx++) {
         if (Math.abs(tx + 0.5 - rx) < w && this.tile(tx, ty) !== T.ROCK || (wet && Math.abs(tx + 0.5 - rx) < w)) this.setTile(tx, ty, wet ? T.WATER : T.DRYBED);
@@ -240,7 +246,7 @@ const World = {
     });
 
     // 10. scatter vegetation & rocks
-    for (let ty = 1; ty < H - 1; ty++) for (let tx = 1; tx < W - 1; tx++) {
+    for (let ty = 1; ty < OH - 1; ty++) for (let tx = 1; tx < OW - 1; tx++) {
       if (this.reserved[ty * W + tx]) continue;
       const t = this.tiles[ty * W + tx], r = rng();
       if (t === T.FOREST) {
@@ -262,6 +268,9 @@ const World = {
         if (r < 0.01) P('rock', tx, ty); else if (r < 0.03) P('stones', tx, ty);
       }
     }
+
+    // the six frontier regions around the original county (world-frontier.js)
+    if (!lite) this.generateFrontier(seed);
 
     // 11. solidity from tiles
     for (let i = 0; i < W * H; i++) {
@@ -289,7 +298,7 @@ const World = {
       if (p.t === 'lamp') this.lights.push({ x: p.x, y: p.y - 18, r: 70, c: 'lamp', prop: p });
       if (p.t === 'campfire') this.lights.push({ x: p.x, y: p.y - 4, r: p.small ? 70 : 110, c: 'fire', prop: p });
     }
-    for (const b of this.buildings) if (b.type !== 'cabin' || b.id === 'cabin_trapper') {
+    for (const b of this.buildings) if (!b.ruin && (b.type !== 'cabin' || b.id === 'cabin_trapper')) {
       for (const w of b.windows) this.lights.push({ x: w.x, y: w.y + 6, r: 34, c: 'window', building: b });
     }
 
@@ -300,6 +309,8 @@ const World = {
     this.poi.mfStation = { x: 225.5 * TS, y: 145 * TS - 4 };
     this.poi.dwStationDoor = doorPx(bc('dw_station'));
     this.poi.mfStationDoor = doorPx(bc('mf_station'));
+    this.poi.sheriffDoors = this.buildings.filter(b => b.type === 'sheriff').map(doorPx);
+    this.poi.stationDoors = this.buildings.filter(b => b.type === 'station').map(doorPx);
     this.poi.start = { x: 66 * TS, y: 144.5 * TS };
     this.poi.saloonFront = { x: 61.5 * TS, y: 122 * TS };
     this.poi.dwSheriffDoor = doorPx(bc('dw_sheriff'));
@@ -318,6 +329,7 @@ const World = {
       'Dustwater': [[36, 120], [48, 120], [62, 120], [73, 120], [84, 120], [96, 120], [106, 120], [40, 134], [60, 134], [76, 134], [92, 134], [104, 134], [73, 128], [58, 140], [66, 145], [76, 116]].map(([x, y]) => ({ x: x * TS + 8, y: y * TS + 8 })),
       'Mesa Flats': [[208, 168], [218, 168], [228, 168], [240, 168], [250, 168], [226, 160], [226, 150], [224, 145]].map(([x, y]) => ({ x: x * TS + 8, y: y * TS + 8 }))
     };
+    if (this.frontierWaypoints) Object.assign(this.townWaypoints, this.frontierWaypoints);
 
     this.buildMinimap();
     this.ready = true;
@@ -351,6 +363,7 @@ const World = {
         const cur = this.tile(tx, ty);
         if (cur === T.WATER || cur === T.BRIDGE) this.setTile(tx, ty, T.BRIDGE);
         else if (cur === T.GRAVEL || cur === T.BOARD) { /* level crossing: keep rail bed */ }
+        else if (cur === T.WALL || cur === T.FLOOR) { /* never cut through a building */ }
         else this.setTile(tx, ty, T.ROAD);
       }
     }
@@ -457,6 +470,7 @@ const World = {
     if (dist(tx, ty, 152, 92) < 10) return "Marshal's Camp";
     for (const c of this.banditCamps) if (dist(x, y, c.x, c.y) < 140) return c.name;
     if (Math.abs(ty - RAIL_ROW) < 4) return 'Iron Horse Railroad';
+    if (tx >= this.OW || ty >= this.OH) { const n = this.frontierRegionName && this.frontierRegionName(x, y); if (n) return n; }
     const t = this.tileAtPx(x, y);
     if (t === T.FOREST) return 'Pinewood Forest';
     if (t === T.DRYBED) return 'Bone Dry Wash';
@@ -556,7 +570,8 @@ const World = {
     const col = {
       [T.GRASS]: [104, 120, 60], [T.SAND]: [205, 168, 110], [T.ROAD]: [150, 108, 70], [T.FOREST]: [46, 70, 38], [T.WATER]: [60, 110, 140],
       [T.ROCK]: [110, 84, 70], [T.FLOOR]: [70, 46, 30], [T.WALL]: [60, 38, 24], [T.BRIDGE]: [130, 92, 56], [T.DRYBED]: [184, 156, 118],
-      [T.SCRUB]: [150, 136, 84], [T.TOWN]: [170, 134, 92], [T.GRAVEL]: [90, 82, 76], [T.BOARD]: [130, 92, 56], [T.CANYON]: [168, 102, 66]
+      [T.SCRUB]: [150, 136, 84], [T.TOWN]: [170, 134, 92], [T.GRAVEL]: [90, 82, 76], [T.BOARD]: [130, 92, 56], [T.CANYON]: [168, 102, 66],
+      [T.SNOW]: [228, 232, 238], [T.ICE]: [176, 210, 228], [T.CLAY]: [176, 86, 54], [T.SALT]: [238, 234, 224], [T.SHALLOW]: [112, 152, 160], [T.PRAIRIE]: [112, 140, 64], [T.SNOWFOREST]: [72, 98, 86]
     };
     for (let i = 0; i < this.W * this.H; i++) {
       const cc = col[this.tiles[i]] || [0, 0, 0], o = i * 4;
@@ -642,6 +657,53 @@ const World = {
       }
       case T.GRAVEL: { r = 118; g = 106; b = 96; const v = (n - 0.5) * 34; r += v; g += v; b += v; break; }
       case T.CANYON: { r = 172; g = 106; b = 70; const v = (nb - 0.5) * 14 + (n - 0.5) * 12; r += v; g += v * 0.8; b += v * 0.7; break; }
+      case T.SNOW: {
+        r = 228; g = 232; b = 240;
+        const v = (nb - 0.5) * 10 + (n - 0.5) * 6 + (nc - 0.5) * 8; r += v; g += v; b += v * 0.6;
+        if (n > 0.985) { r = g = b = 255; } else if (nc < 0.3) { r -= 14; g -= 10; b -= 2; }
+        break;
+      }
+      case T.SNOWFOREST: {
+        r = 76; g = 100; b = 86;
+        const v = (nb - 0.5) * 14 + (n - 0.5) * 10; r += v; g += v; b += v;
+        if (nc > 0.62 || n > 0.9) { r = 214 + v; g = 222 + v; b = 230 + v; }
+        break;
+      }
+      case T.ICE: {
+        r = 172; g = 206; b = 226;
+        const v = (nb - 0.5) * 10; r += v; g += v; b += v;
+        const ck = Math.abs(Math.sin(px * 0.21 + Math.cos(py * 0.17) * 3) * Math.sin(py * 0.19 + Math.sin(px * 0.13) * 2));
+        if (ck < 0.035) { r += 50; g += 40; b += 26; }
+        if (n > 0.97) { r = g = b = 250; }
+        break;
+      }
+      case T.CLAY: {
+        r = 180; g = 88; b = 56;
+        const v = (nb - 0.5) * 16 + (n - 0.5) * 12; r += v; g += v * 0.7; b += v * 0.6;
+        if (Math.sin(py * 0.5 + nc * 6) > 0.92) { r -= 22; g -= 12; b -= 8; }
+        if (n > 0.97) { r += 30; g += 24; b += 18; }
+        break;
+      }
+      case T.SALT: {
+        r = 238; g = 234; b = 224;
+        const v = (nb - 0.5) * 6 + (n - 0.5) * 6; r += v; g += v; b += v;
+        const ck = Math.abs(Math.sin(px * 0.13 + Math.cos(py * 0.11) * 2.7) * Math.sin(py * 0.12 + Math.sin(px * 0.09) * 2.1));
+        if (ck < 0.03) { r -= 40; g -= 36; b -= 30; }
+        break;
+      }
+      case T.SHALLOW: {
+        r = 104; g = 146; b = 154;
+        const v = (nb - 0.5) * 10; r += v; g += v; b += v;
+        if (Math.sin(px * 0.6 + py * 0.25 + nc * 5) > 0.85) { r += 40; g += 40; b += 34; }
+        if (n > 0.95) { r = 150; g = 130; b = 100; }
+        break;
+      }
+      case T.PRAIRIE: {
+        r = 104; g = 138; b = 58;
+        const v = (nb - 0.5) * 16 + (n - 0.5) * 12 + (nc - 0.5) * 10; r += v; g += v * 1.1; b += v * 0.6;
+        if (n > 0.95) { r += 40; g += 30; b -= 4; } else if (n < 0.04) { r -= 20; g -= 16; b -= 10; }
+        break;
+      }
       default: r = g = b = 255;
     }
     out[0] = r; out[1] = g; out[2] = b;
@@ -715,13 +777,19 @@ const World = {
     }
   },
 
+  /* movement multiplier for the ground at a pixel (fords, deep snow) */
+  terrainMul(x, y) {
+    const t = this.tileAtPx(x, y);
+    return t === T.SHALLOW ? 0.55 : t === T.SNOWFOREST ? 0.8 : t === T.SNOW ? 0.88 : 1;
+  },
+
   /* collect tall props intersecting a rect for y-sorted drawing */
   tallPropsIn(x0, y0, x1, y1, out) {
     const S = this.CH * TS;
-    const cx0 = Math.max(0, Math.floor((x0 - 48) / S)), cy0 = Math.max(0, Math.floor(y0 / S));
-    const cx1 = Math.min(this.CW - 1, Math.floor((x1 + 48) / S)), cy1 = Math.min(this.CHh - 1, Math.floor((y1 + 80) / S));
+    const cx0 = Math.max(0, Math.floor((x0 - 72) / S)), cy0 = Math.max(0, Math.floor(y0 / S));
+    const cx1 = Math.min(this.CW - 1, Math.floor((x1 + 72) / S)), cy1 = Math.min(this.CHh - 1, Math.floor((y1 + 80) / S));
     for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
-      for (const p of this.tallByChunk[cx + cy * this.CW]) if (p.x > x0 - 48 && p.x < x1 + 48 && p.y > y0 && p.y < y1 + 80) out.push(p);
+      for (const p of this.tallByChunk[cx + cy * this.CW]) if (p.x > x0 - 72 && p.x < x1 + 72 && p.y > y0 && p.y < y1 + 80) out.push(p);
     }
     return out;
   }

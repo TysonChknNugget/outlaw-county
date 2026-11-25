@@ -35,14 +35,17 @@ const Progress = {
 /* ============================================================ bounty hunting */
 const BOUNTY_NICKS = ['Snake-Eye', 'Two-Gun', 'Mad Dog', 'Whiskey', 'Coyote', 'Smiling', 'Lucky', 'Rattler', 'Kid', 'Gravedigger', 'Sixkiller', 'Slim'];
 const BOUNTY_CRIMES = ['cattle rustling', 'horse theft', 'murder', 'robbing the mail', 'arson', 'claim jumping', 'train wrecking', 'bank fraud'];
-const BOUNTY_SPOTS = [[150, 186], [272, 190], [30, 96], [200, 64], [118, 214], [296, 150], [62, 30], [176, 106], [250, 122], [88, 168], [20, 180], [240, 230]];
+const BOUNTY_SPOTS = [[150, 186], [272, 190], [30, 96], [200, 64], [118, 214], [296, 150], [62, 30], [176, 106], [250, 122], [88, 168], [20, 180], [240, 230],
+  // frontier
+  [470, 60], [660, 200], [760, 90], [1180, 160], [1240, 60], [360, 380], [500, 300], [660, 460], [760, 300], [980, 380], [1150, 440], [120, 520], [300, 640], [700, 560], [940, 620], [1200, 600], [300, 870], [800, 880], [1100, 860]];
 
 const Bounties = {
   board: [], active: null, day: -1, nextId: 1,
 
   reset() { this.board = []; this.active = null; this.day = -1; this.nextId = 1; },
   makePosting() {
-    const [tx, ty] = pick(BOUNTY_SPOTS), sp = World.findOpen(tx * TS + 8, ty * TS + 8, 6);
+    const P = G.player, near = BOUNTY_SPOTS.filter(([x, y]) => x < World.W && y < World.H && dist(x * TS, y * TS, P.x, P.y) < 300 * TS);
+    const [tx, ty] = pick(near.length >= 3 ? near : BOUNTY_SPOTS.filter(([x, y]) => x < World.W && y < World.H)), sp = World.findOpen(tx * TS + 8, ty * TS + 8, 6);
     const alive = randi(12, 26) * 10;
     return {
       id: this.nextId++, name: `${pick(FIRST.slice(0, 15))} "${pick(BOUNTY_NICKS)}" ${pick(LAST)}`, crime: pick(BOUNTY_CRIMES),
@@ -63,8 +66,8 @@ const Bounties = {
   },
   abandon() { const a = this.active; if (!a) return; if (a.actor && !a.actor.dead) a.actor.removeMe = true; this.active = null; UI.notify('Bounty abandoned.', 'info'); },
   nearestSheriff() {
-    const P = G.player, a = World.poi.dwSheriffDoor, b = World.poi.mfSheriffDoor;
-    return dist(P.x, P.y, a.x, a.y) < dist(P.x, P.y, b.x, b.y) ? a : b;
+    const P = G.player, doors = World.poi.sheriffDoors || [World.poi.dwSheriffDoor, World.poi.mfSheriffDoor];
+    return doors.reduce((best, d) => dist(P.x, P.y, d.x, d.y) < dist(P.x, P.y, best.x, best.y) ? d : best);
   },
   update() {
     const A = this.active, P = G.player;
@@ -269,5 +272,82 @@ const Events = {
   }
 };
 
+/* ============================================================ discovery & waypoints
+ * The map starts hidden outside the original county. Riding around uncovers it in
+ * 8×8-tile cells; the first visit to a settlement announces it. */
+const Discovery = {
+  CW: 160, CHh: 120, CELL: 8, t: 0, fog: null, dirty: true,
+  fresh() {
+    const a = new Uint8Array(this.CW * this.CHh);
+    for (let y = 0; y < 30; y++) for (let x = 0; x < 40; x++) a[y * this.CW + x] = 1;   // the home county is known
+    return a;
+  },
+  encode(a) {
+    let s = '';
+    for (let i = 0; i < a.length; i += 8) { let b = 0; for (let j = 0; j < 8; j++) if (a[i + j]) b |= 1 << j; s += String.fromCharCode(b); }
+    return btoa(s);
+  },
+  decode(str) {
+    const a = this.fresh();
+    try { const s = atob(str); for (let i = 0; i < s.length; i++) { const b = s.charCodeAt(i); for (let j = 0; j < 8; j++) if (b & (1 << j)) a[i * 8 + j] = 1; } } catch (e) { /* corrupt: keep defaults */ }
+    return a;
+  },
+  ensure() {
+    const w = G.world;
+    if (!(w.explored instanceof Uint8Array)) { w.explored = typeof w.explored === 'string' ? this.decode(w.explored) : this.fresh(); this.dirty = true; }
+    if (!w.discovered) w.discovered = ['Dustwater', 'Mesa Flats'];
+    if (w.waypoint === undefined) w.waypoint = null;
+  },
+  seenAt(x, y) {
+    this.ensure();
+    const cx = Math.floor(x / TS / this.CELL), cy = Math.floor(y / TS / this.CELL);
+    return cx >= 0 && cy >= 0 && cx < this.CW && cy < this.CHh && !!G.world.explored[cy * this.CW + cx];
+  },
+  reveal(x, y, r) {
+    const e = G.world.explored, c0x = x / TS / this.CELL, c0y = y / TS / this.CELL;
+    for (let cy = Math.floor(c0y - r); cy <= c0y + r; cy++) for (let cx = Math.floor(c0x - r); cx <= c0x + r; cx++) {
+      if (cx < 0 || cy < 0 || cx >= this.CW || cy >= this.CHh) continue;
+      const i = cy * this.CW + cx;
+      if (!e[i] && dist(cx + 0.5, cy + 0.5, c0x, c0y) <= r) { e[i] = 1; this.dirty = true; }
+    }
+  },
+  update(dt) {
+    this.t -= dt; if (this.t > 0) return; this.t = 0.4;
+    this.ensure();
+    const P = G.player; if (!P) return;
+    this.reveal(P.x, P.y, P.mounted ? 5.5 : 4.5);
+    const town = World.townAt(P.x, P.y);
+    if (town && !G.world.discovered.includes(town.name)) {
+      G.world.discovered.push(town.name);
+      UI.notify(`Discovered ${town.name}.`, 'good'); Sound.play('bell', P.x, P.y, 0.5); Progress.add(25);
+    }
+    const wp = G.world.waypoint;
+    if (wp && dist(P.x, P.y, wp.x, wp.y) < 48) { G.world.waypoint = null; UI.notify('Waypoint reached.', 'info'); }
+  },
+  /* a W/8 × H/8 canvas: parchment where unexplored, clear where seen */
+  fogCanvas() {
+    this.ensure();
+    if (!this.fog || this.fog.width !== this.CW) { this.fog = document.createElement('canvas'); this.fog.width = this.CW; this.fog.height = this.CHh; this.dirty = true; }
+    if (this.dirty) {
+      const g = this.fog.getContext('2d'), img = g.createImageData(this.CW, this.CHh), e = G.world.explored;
+      for (let i = 0; i < e.length; i++) { const o = i * 4; img.data[o] = 214; img.data[o + 1] = 196; img.data[o + 2] = 156; img.data[o + 3] = e[i] ? 0 : 242; }
+      g.putImageData(img, 0, 0); this.dirty = false;
+    }
+    return this.fog;
+  },
+  setWaypoint(x, y) {
+    if (x < 0 || y < 0 || x >= World.W * TS || y >= World.H * TS) return;
+    G.world.waypoint = { x, y }; Sound.play('click', G.player.x, G.player.y, 0.6);
+  },
+  clearWaypoint() { G.world.waypoint = null; }
+};
+
+function markerColor(m) { return m.kind === 'waypoint' ? '#c890ff' : m.kind === 'giver' ? '#ffcf40' : '#f8e050'; }
+
 /* every marker the HUD, minimap and map should show */
-function allMarkers() { return MissionSys.markers().concat(Bounties.markers(), Events.markers()); }
+function allMarkers() {
+  const out = MissionSys.markers().concat(Bounties.markers(), Events.markers());
+  const wp = G.world && G.world.waypoint;
+  if (wp) out.push({ x: wp.x, y: wp.y, kind: 'waypoint', label: 'Waypoint' });
+  return out;
+}

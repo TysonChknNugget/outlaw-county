@@ -28,7 +28,7 @@ const SaveSys = {
       horse: h ? { breed: h.breed, name: h.name, coat: h.coat, pinto: h.pinto, hp: h.hp, x: h.x, y: h.y } : null,
       law: { bounty: Law.bounty },
       missions: { completed: MissionSys.completed, flags: MissionSys.flags },
-      world: Object.assign({}, G.world, { camps: World.banditCamps.map(c => c.members.length && c.members.every(m => m.dead) ? (c.clearedAt >= 0 ? c.clearedAt : G.time) : -1) }),
+      world: Object.assign({}, G.world, { explored: Discovery.encode(G.world.explored || Discovery.fresh()), camps: World.banditCamps.map(c => c.members.length && c.members.every(m => m.dead) ? (c.clearedAt >= 0 ? c.clearedAt : G.time) : -1) }),
       stats: G.stats
     };
   },
@@ -164,7 +164,8 @@ const Game = {
 
   resetState() {
     G.time = 8 * 60; G.floaters = []; G.tempLights = []; G.region = '';
-    G.world = { robbed: {}, treasuresFound: [], treasuresRevealed: [], cratesLooted: [] };
+    G.world = { robbed: {}, treasuresFound: [], treasuresRevealed: [], cratesLooted: [], explored: Discovery.fresh(), discovered: ['Dustwater', 'Mesa Flats'], waypoint: null };
+    Discovery.dirty = true;
     G.stats = { kills: 0, deaths: 0, shots: 0, hits: 0, robberies: 0, crimes: 0, earned: 0, hunted: 0, treasures: 0, missions: 0 };
     Law.reset(); MissionSys.reset(); Interact.action = null;
     Combat.reset(); Bounties.reset(); Events.reset();
@@ -215,6 +216,7 @@ const Game = {
     MissionSys.completed = s.missions.completed.slice(); MissionSys.flags = Object.assign({}, s.missions.flags);
     G.world = Object.assign({ robbed: {}, treasuresFound: [], treasuresRevealed: [], cratesLooted: [] }, s.world);
     delete G.world.camps;
+    G.world.explored = typeof s.world.explored === 'string' ? Discovery.decode(s.world.explored) : Discovery.fresh(); Discovery.dirty = true; Discovery.ensure();
     G.stats = Object.assign(G.stats, s.stats);
     // version 1.2 additions (older saves get defaults)
     P.owned.fists = true;
@@ -380,6 +382,7 @@ const Game = {
     MissionSys.update(dt);
     Bounties.update(dt);
     Events.update(dt);
+    Discovery.update(dt);
     Spawner.update(dt);
     // camera
     const c = G.cam, mw = G.mouseWorld;

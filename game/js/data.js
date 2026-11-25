@@ -68,12 +68,15 @@ const ITEMS = {
   pelt_rabbit: { name: 'Rabbit Pelt', type: 'pelt', sell: 4, desc: 'Soft and small.' },
   pelt_coyote: { name: 'Coyote Pelt', type: 'pelt', sell: 9, desc: 'Mangy but sellable.' },
   pelt_deer: { name: 'Deer Hide', type: 'pelt', sell: 14, desc: 'A fine hide.' },
+  pelt_cougar: { name: 'Cougar Pelt', type: 'pelt', sell: 24, desc: 'Tawny and heavy. Trappers pay well.' },
+  pelt_bear: { name: 'Bear Hide', type: 'pelt', sell: 32, desc: 'A mountain grizzly. Worth the trouble.' },
+  pelt_elk: { name: 'Elk Hide', type: 'pelt', sell: 18, desc: 'Thick winter hide from the high country.' },
   jewelry: { name: 'Jewelry', type: 'stolen', sell: 28, desc: 'Rings and brooches. Hot property.' },
   watch: { name: 'Pocket Watch', type: 'stolen', sell: 16, desc: 'Engraved to somebody else.' },
   gold_bar: { name: 'Gold Bar', type: 'stolen', sell: 140, desc: 'Stamped by the county bank.' },
   treasure_map: { name: 'Treasure Map', type: 'map', sell: 0, desc: 'Marks a buried cache on your map.' }
 };
-const ITEM_ORDER = ['bandage', 'tonic', 'whiskey', 'oats', 'pelt_rabbit', 'pelt_coyote', 'pelt_deer', 'jewelry', 'watch', 'gold_bar', 'treasure_map', 'dynamite', 'firebottle'];
+const ITEM_ORDER = ['bandage', 'tonic', 'whiskey', 'oats', 'pelt_rabbit', 'pelt_coyote', 'pelt_deer', 'pelt_elk', 'pelt_cougar', 'pelt_bear', 'jewelry', 'watch', 'gold_bar', 'treasure_map', 'dynamite', 'firebottle'];
 const THROWABLES = ['dynamite', 'firebottle'];
 
 /* Reputation perks: one is chosen each time the player levels up. */
@@ -134,6 +137,32 @@ const SHOPS = {
   mf_station: { name: 'Mesa Flats Station', type: 'station', till: [30, 60] },
   mf_sheriff: { name: 'Mesa Flats Jailhouse', type: 'sheriff' },
   camp_fence: { name: "Old Silas the Fence", type: 'fence' },
+  // frontier towns (v1.3)
+  sc_general: { name: 'Crown Outfitters', type: 'general', till: [70, 130] },
+  sc_saloon: { name: 'The Bonanza', type: 'saloon', till: [60, 120] },
+  sc_bank: { name: 'Silver Crown Assay Office', type: 'bank', till: [200, 320] },
+  sc_gunsmith: { name: 'Lode Gunworks', type: 'gunsmith', till: [80, 150] },
+  sc_hotel: { name: "The Miners' Rest", type: 'hotel', till: [40, 80] },
+  sc_stables: { name: 'Silver Crown Livery', type: 'stables', till: [40, 90] },
+  sc_station: { name: 'Silver Crown Depot', type: 'depot', till: [30, 60] },
+  sc_sheriff: { name: 'Silver Crown Jail', type: 'sheriff' },
+  ph_general: { name: 'Harlow Ship Chandlery', type: 'general', till: [80, 150] },
+  ph_saloon: { name: 'The Lucky Anchor', type: 'saloon', till: [60, 120] },
+  ph_bank: { name: 'Harlow Savings Bank', type: 'bank', till: [220, 360] },
+  ph_gunsmith: { name: 'Dockside Arms', type: 'gunsmith', till: [80, 150] },
+  ph_hotel: { name: 'Lakeview Hotel', type: 'hotel', till: [50, 90] },
+  ph_stables: { name: 'Port Harlow Livery', type: 'stables', till: [40, 90] },
+  ph_station: { name: 'Port Harlow Terminal', type: 'depot', till: [40, 70] },
+  ph_sheriff: { name: 'Harbor Constable', type: 'sheriff' },
+  fg_store: { name: "Sutler's Store", type: 'general', till: [60, 110] },
+  fg_stockade: { name: 'Fort Granger Stockade', type: 'sheriff' },
+  fg_stables: { name: 'Cavalry Remount', type: 'stables', till: [30, 60] },
+  cc_general: { name: 'Cottonwood Mercantile', type: 'general', till: [40, 90] },
+  sl_cantina: { name: 'Cantina La Paloma', type: 'saloon', till: [40, 90] },
+  sl_general: { name: 'Mercado Arrieta', type: 'general', till: [50, 100] },
+  sl_gunsmith: { name: 'Armería Reyes', type: 'gunsmith', till: [70, 130] },
+  sl_stables: { name: 'Caballeriza San Lucero', type: 'stables', till: [30, 70] },
+  sl_sheriff: { name: 'Casa de la Ley', type: 'sheriff' },
   trapper: { name: "Trapper Jo's Cabin", type: 'trapper' }
 };
 
@@ -144,6 +173,7 @@ const SHOP_STOCK = {
   hotel: { buy: ['service:sleep'], sells: [] },
   stables: { buy: ['horse:mustang', 'horse:morgan', 'horse:quarter', 'horse:arabian', 'oats', 'service:groom'], sells: [] },
   station: { buy: ['service:travel', 'service:paybounty'], sells: [] },
+  depot: { buy: ['service:paybounty', 'oats', 'bandage'], sells: ['pelt'] },
   sheriff: { buy: ['service:paybounty', 'bounties'], sells: [] },
   fence: { buy: ['ammo:revolver', 'ammo:rifle', 'bandage', 'dynamite'], sells: ['stolen', 'pelt'] },
   trapper: { buy: ['ammo:rifle', 'bandage'], sells: ['pelt'], peltBonus: 1.25 },
