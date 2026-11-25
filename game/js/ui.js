@@ -609,10 +609,15 @@ const Updates = {
       $('upd-text').innerHTML = `<b>Update v${esc(s.version)}</b> found — downloading in the background… ${s.percent || 0}%`;
       $('upd-fill').style.width = (s.percent || 0) + '%';
       btn('Hide', 'ghost', () => { this.dismissed = 'downloading' + s.version; el.classList.add('hidden'); });
+    } else if (s.state === 'ready' && s.content) {
+      $('upd-text').innerHTML = `<b>Update v${esc(s.version)} is ready!</b><br>It takes a second: no installer, no PIN. Your saves are kept.`;
+      btn('Reload & update', '', () => this.install());
+      btn('Later', 'ghost', () => { this.dismissed = key; el.classList.add('hidden'); UI.notify('The update loads the next time you start the game.', 'info'); });
+      if (this.announced !== s.version && G.state === 'play') { this.announced = s.version; UI.notify(`Update v${s.version} is ready. Pause and reload any time to get it.`, 'mission'); }
     } else if (s.state === 'ready') {
       $('upd-text').innerHTML = `<b>Update v${esc(s.version)} is ready!</b><br>Restart the game to install it. Your saves are kept.`;
       btn('Restart & update', '', () => this.install());
-      btn('Later', 'ghost', () => { this.dismissed = key; el.classList.add('hidden'); UI.notify('The update will install the next time you quit the game.', 'info'); });
+      btn('Later', 'ghost', () => { this.dismissed = key; el.classList.add('hidden'); UI.notify('You can install the update any time from this notice.', 'info'); });
       if (this.announced !== s.version && G.state === 'play') { this.announced = s.version; UI.notify(`Update v${s.version} is ready — restart to install it.`, 'mission'); }
     } else if (s.state === 'available') {
       $('upd-text').innerHTML = `<b>Update v${esc(s.version)} is available.</b><br>This portable copy can't update itself — get the new version from the website.`;
@@ -628,7 +633,7 @@ const Updates = {
       const err = SaveSys.save('auto');
       if (err && !confirm(`${err}\nUpdate anyway? Progress since your last save will be lost.`)) return;
     }
-    $('upd-text').innerHTML = '<b>Installing the update…</b> The game will reopen in a moment.';
+    $('upd-text').innerHTML = this.state && this.state.content ? '<b>Loading the update…</b>' : '<b>Installing the update…</b> The game will reopen in a moment.';
     $('upd-actions').innerHTML = '';
     window.ocDesktop.installUpdate();
   }

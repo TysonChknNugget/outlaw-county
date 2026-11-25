@@ -1,7 +1,7 @@
 {
   "name": "outlaw-county",
   "productName": "Outlaw County",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "A 2D open-world western crime sandbox set in the 1890s frontier.",
   "main": "electron/main.js",
   "author": "Outlaw County",
@@ -11,6 +11,7 @@
     "start": "electron .",
     "build:win": "electron-builder --win --x64 --publish never",
     "release": "electron-builder --win --x64 --publish never && node scripts/release.js",
+    "content": "node scripts/content.js",
     "publish-download": "node scripts/publish-download.js",
     "dist": "electron-builder --win --x64 --publish never && node scripts/publish-download.js"
   },

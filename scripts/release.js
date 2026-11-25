@@ -33,6 +33,10 @@ const body = `${notes}\n\nAlready installed? The game updates itself — you'll 
   `Not code-signed: if Windows warns, choose **More info → Run anyway**.`;
 run('gh', ['release', 'create', tag, ...files, '--repo', `${pub.owner}/${pub.repo}`, '--title', `Outlaw County ${v}`, '--notes', body]);
 
+// refresh the game-content bundle too, so installed copies can update without an installer
+const content = require('./content');
+content.upload(content.build());
+
 // website download links
 const manifest = path.join(root, 'downloads', 'manifest.js');
 fs.writeFileSync(manifest, `/* Download links for the website, written by scripts/release.js for ${tag}.\n * The builds are GitHub Release assets (GitHub won't store files over 100 MB in a repository). */\n` +
