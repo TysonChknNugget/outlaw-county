@@ -417,3 +417,7 @@ body.desktop .web-only { display: none; }
 #ach-toast small { display: block; font: bold 10px var(--slab); letter-spacing: 3px; text-transform: uppercase; color: #d8a945; }
 #ach-toast b { display: block; font: bold 16px var(--slab); color: #fff0cc; }
 #ach-toast span { display: block; font-size: 12px; color: #c8b088; }
+
+/* ---------- v2.4: duels ---------- */
+#duel { background: #000; }
+#duel-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; cursor: none; image-rendering: pixelated; }
