@@ -278,6 +278,12 @@ const World = {
       if (t === T.ROCK || t === T.WALL) this.solid[i] |= SOL.ALL;
       else if (t === T.WATER) this.solid[i] |= SOL.MOVE;
     }
+    // v2.5 open country: the mountain ridges and cliff walls (rock) no longer fence you in.
+    // You can ride over them anywhere (a little slower); only the map's outer edge blocks.
+    // Rock still stops bullets and blocks sight, so it keeps working as cover.
+    for (let i = 0; i < W * H; i++) if (this.tiles[i] === T.ROCK) this.solid[i] &= ~SOL.MOVE;
+    const EDGE = 2;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (x < EDGE || y < EDGE || x >= W - EDGE || y >= H - EDGE) this.solid[y * W + x] |= SOL.ALL;
     // re-apply building furniture solidity (walls set above)
     for (const b of this.buildings) for (const f of b.furniture) if (f.sol) for (let y = f.y; y < f.y + f.h; y++) for (let x = f.x; x < f.x + f.w; x++) this.solid[this.idx(x, y)] |= f.sol;
 
@@ -536,7 +542,7 @@ const World = {
         const nx = cx + dx, ny = cy + dy;
         if (!this.inb(nx, ny) || (this.solid[ny * W + nx] & SOL.MOVE)) continue;
         if (dx && dy && ((this.solid[cy * W + nx] & SOL.MOVE) || (this.solid[ny * W + cx] & SOL.MOVE))) continue;
-        const ni = ny * W + nx, ng = g.get(cur) + c;
+        const ni = ny * W + nx, nt = this.tiles[ni], ng = g.get(cur) + c * (nt === T.WATER ? 6 : nt === T.ROCK ? 3 : 1);   // NPCs prefer to go around lakes and cliffs
         if (ng < (g.has(ni) ? g.get(ni) : Infinity)) {
           g.set(ni, ng); came.set(ni, cur);
           heap.push(ni, ng + Math.hypot(nx - etx, ny - ety) * 1.1);
@@ -555,7 +561,7 @@ const World = {
     for (let i = 0; i < 30; i++) {
       const a = rand(TAU), r = rand(rmin, rmax), px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
       const tx = Math.floor(px / TS), ty = Math.floor(py / TS);
-      if (!this.inb(tx, ty) || (this.sol(tx, ty) & SOL.MOVE) || this.circleBlocked(px, py, 6)) continue;
+      if (!this.inb(tx, ty) || (this.sol(tx, ty) & SOL.MOVE) || this.circleBlocked(px, py, 6) || this.tiles[ty * this.W + tx] === T.WATER || this.tiles[ty * this.W + tx] === T.ROCK) continue;
       if (this.buildingAt(px, py)) continue;
       if (avoidView && avoidView(px, py)) continue;
       return { x: px, y: py };
@@ -780,7 +786,7 @@ const World = {
   /* movement multiplier for the ground at a pixel (fords, deep snow) */
   terrainMul(x, y) {
     const t = this.tileAtPx(x, y);
-    return t === T.SHALLOW ? 0.55 : t === T.SNOWFOREST ? 0.8 : t === T.SNOW ? 0.88 : 1;
+    return t === T.SHALLOW ? 0.55 : t === T.ROCK ? 0.8 : t === T.SNOWFOREST ? 0.8 : t === T.SNOW ? 0.88 : 1;
   },
 
   /* collect tall props intersecting a rect for y-sorted drawing */
