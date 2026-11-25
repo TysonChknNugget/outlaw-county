@@ -447,6 +447,7 @@ const Game = {
     for (const a of G.actors) if (a.dead && a.x > x0 - 20 && a.x < x1 + 20 && a.y > y0 - 10 && a.y < y1 + 20) a.draw(ctx);
     for (const an of G.animals) if (an.dead && !an.gone && an.x > x0 - 20 && an.x < x1 + 20 && an.y > y0 && an.y < y1 + 20) an.draw(ctx);
     for (const h of G.horses) if (h.dead && h.x > x0 - 30 && h.x < x1 + 30 && h.y > y0 && h.y < y1 + 20) h.draw(ctx);
+    if (!menu) Hooks.run('drawGround', ctx);
     // y-sorted pass
     const L = this.drawList; L.length = 0;
     const props = World.tallPropsIn(x0, y0, x1, y1, []);
@@ -458,6 +459,7 @@ const Game = {
     for (const cc of G.coaches) if (cc.x > x0 - 60 && cc.x < x1 + 60 && cc.y > y0 - 10 && cc.y < y1 + 50) L.push({ y: cc.y, k: 3, r: cc });
     for (const tg of G.targets) L.push({ y: tg.y + 1, k: 2, r: tg });
     if (!menu && !P.mounted) L.push({ y: P.y, k: 2, r: P });
+    if (!menu) for (const o of Hooks.collect('sortables')) L.push({ y: o.y, k: 2, r: o });
     if (G.train && G.train.state !== 'wait' && G.train.y > y0 - 10 && G.train.y < y1 + 40) L.push({ y: G.train.y, k: 4, r: G.train });
     L.sort((a, b) => a.y - b.y);
     for (const e of L) {

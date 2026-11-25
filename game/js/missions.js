@@ -56,7 +56,7 @@ const MissionSys = {
     const s = this.cur();
     this.data.events = {}; this.data.st = 0;
     if (s.enter) s.enter(this.data);
-    UI.notify('Objective: ' + s.text, 'mission');
+    UI.notify('Objective: ' + (typeof s.text === 'function' ? s.text(this.data) : s.text), 'mission');
   },
 
   update(dt) {
