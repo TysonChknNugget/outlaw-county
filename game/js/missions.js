@@ -194,7 +194,7 @@ MissionSys.register({
       enter: d => {
         const P = G.player;
         if (!P.horse || P.horse.dead) {
-          const h = new Horse('mustang', 61 * TS + 8, 123 * TS + 4, { owner: 'player', name: 'Biscuit', face: 0 });
+          const h = new Horse('mustang', 61 * TS + 8, 123 * TS + 9, { owner: 'player', name: 'Biscuit', face: 0 });
           h.saddle = true; G.horses.push(h); P.horse = h; d.horse = h;
         } else d.horse = P.horse;
         UI.notify('Tip: WASD steers your horse, Shift gallops. Watch its stamina.', 'tip');

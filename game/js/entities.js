@@ -84,8 +84,10 @@ class Ent {
   blocked(x, y) { return World.circleBlocked(x, y, this.r) || Vehicles.blocks(x, y, this.r, this); }
   move(dx, dy) {
     let moved = false;
-    if (dx) { const nx = this.x + dx; if (!this.blocked(nx, this.y)) { this.x = nx; moved = true; } }
-    if (dy) { const ny = this.y + dy; if (!this.blocked(this.x, ny)) { this.y = ny; moved = true; } }
+    // something already overlapping a wall (spawned or pushed into it) may move freely until it is clear
+    const stuck = this.blocked(this.x, this.y);
+    if (dx) { const nx = this.x + dx; if (stuck || !this.blocked(nx, this.y)) { this.x = nx; moved = true; } }
+    if (dy) { const ny = this.y + dy; if (stuck || !this.blocked(this.x, ny)) { this.y = ny; moved = true; } }
     this.x = clamp(this.x, 8, World.W * TS - 8); this.y = clamp(this.y, 8, World.H * TS - 8);
     return moved;
   }

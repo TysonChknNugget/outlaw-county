@@ -599,8 +599,8 @@ const Spawner = {
     for (const c of W.banditCamps) this.spawnCamp(c);
     // horses
     const hitch = [[58, 122], [64, 122], [84, 122], [236, 170]];
-    hitch.forEach(([tx, ty], i) => G.horses.push(new Horse(i % 2 ? 'mustang' : 'nag', tx * TS + 8 + (i % 2 ? 6 : -6), (ty + 1) * TS + 2, { owner: 'town', face: Math.PI / 2 })));
-    ['mustang', 'morgan', 'quarter', 'arabian'].forEach((b, i) => G.horses.push(new Horse(b, (47.5 + (i % 2) * 3) * TS, (126 + Math.floor(i / 2) * 3) * TS, { owner: 'shop', face: 0 })));
+    hitch.forEach(([tx, ty], i) => G.horses.push(new Horse(i % 2 ? 'mustang' : 'nag', tx * TS + 8 + (i % 2 ? 6 : -6), (ty + 1) * TS + 9, { owner: 'town', face: Math.PI / 2 })));
+    ['mustang', 'morgan', 'quarter', 'arabian'].forEach((b, i) => G.horses.push(new Horse(b, (48.5 + (i % 2) * 3) * TS, (126 + Math.floor(i / 2) * 3) * TS, { owner: 'shop', face: 0 })));
     this.spawnHerd(100 * TS, 168 * TS, 3); this.spawnHerd(190 * TS, 188 * TS, 2); this.spawnHerd(30 * TS, 95 * TS, 2);
     G.train = new Train();
     G.train.x = 30 * TS;

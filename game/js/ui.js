@@ -122,6 +122,7 @@ const UI = {
   },
   endDialogue(ok) {
     const d = this.dlg; this.dlg = null;
+    if (!d) return;
     $('dialogue').classList.add('hidden'); this.modal = null;
     if (ok && d.onDone) d.onDone();
   },
