@@ -51,8 +51,35 @@ const Story = {
   campMarker() { const p = this.campPos(); return { x: p.x, y: p.y, label: this.campName() }; },
 
   /* ------------------------------------------------ places */
+  /* every tile you can walk or ride to from Dustwater (computed once per world) */
+  reachGrid() {
+    if (this.reachCache && this.reachCache.w === World.W && this.reachCache.gen === World.buildings.length) return this.reachCache.g;
+    const W = World.W, H = World.H, g = new Uint8Array(W * H), q = new Int32Array(W * H), s = World.poi.start;
+    let h = 0, t = 0; const s0 = Math.floor(s.y / TS) * W + Math.floor(s.x / TS); q[t++] = s0; g[s0] = 1;
+    while (h < t) {
+      const i = q[h++], x = i % W, y = (i / W) | 0;
+      if (x > 0 && !g[i - 1] && !(World.sol(x - 1, y) & SOL.MOVE)) { g[i - 1] = 1; q[t++] = i - 1; }
+      if (x < W - 1 && !g[i + 1] && !(World.sol(x + 1, y) & SOL.MOVE)) { g[i + 1] = 1; q[t++] = i + 1; }
+      if (y > 0 && !g[i - W] && !(World.sol(x, y - 1) & SOL.MOVE)) { g[i - W] = 1; q[t++] = i - W; }
+      if (y < H - 1 && !g[i + W] && !(World.sol(x, y + 1) & SOL.MOVE)) { g[i + W] = 1; q[t++] = i + W; }
+    }
+    this.reachCache = { w: W, gen: World.buildings.length, g };
+    return g;
+  },
+  reachable(x, y) { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx >= 0 && ty >= 0 && tx < World.W && ty < World.H && !!this.reachGrid()[ty * World.W + tx]; },
+  /* the nearest reachable spot, searching outward ring by ring */
+  snap(p) {
+    if (!p || this.reachable(p.x, p.y)) return p;
+    const g = this.reachGrid(), W = World.W, cx = Math.floor(p.x / TS), cy = Math.floor(p.y / TS);
+    for (let r = 1; r < 90; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+      const x = cx + dx, y = cy + dy;
+      if (x >= 0 && y >= 0 && x < W && y < World.H && g[y * W + x]) return Object.assign({}, p, { x: x * TS + 8, y: y * TS + 8 });
+    }
+    return p;
+  },
   open(tx, ty, r = 120) {
-    const p = World.randomOpenNear(tx * TS, ty * TS, 0, r, (x, y) => { const t = World.tileAtPx(x, y); return t !== T.WATER && t !== T.FLOOR; });
+    const p = World.randomOpenNear(tx * TS, ty * TS, 0, r, (x, y) => { const t = World.tileAtPx(x, y); return t === T.WATER || t === T.FLOOR || !this.reachable(x, y); });
     return p || { x: tx * TS + 8, y: ty * TS + 8 };
   },
   door(id, dy = 1) { const b = World.buildings.find(b => b.id === id); return b ? { x: b.door.x * TS + 8, y: (b.door.y + dy) * TS + 8, b } : null; },
@@ -82,6 +109,7 @@ const Story = {
       waterTower: o(440, 150, 80), crossroads: o(380, 380, 120), fenceHouse: R[3] || o(520, 470, 80),
       fgPrisonGate: World.poi.fortGate || o(420, 345, 60), dwGraves: o(80, 128, 80)
     };
+    for (const k in pl) if (pl[k] && typeof pl[k] === 'object' && pl[k].x !== undefined) pl[k] = this.snap(pl[k]);
     this.placesCache = pl; return pl;
   },
   at(key) { const p = typeof key === 'function' ? key() : typeof key === 'string' ? this.places()[key] : key; return p || World.poi.start; },
@@ -134,7 +162,7 @@ const Story = {
   ring(where, n, type, r0 = 80, r1 = 160, o = {}) {
     const c = this.at(where), out = [];
     for (let i = 0; i < n; i++) {
-      const sp = World.randomOpenNear(c.x, c.y, r0, r1) || { x: c.x + rand(-r1, r1), y: c.y + rand(-r1, r1) };
+      const sp = World.randomOpenNear(c.x, c.y, r0, r1, (x, y) => !this.reachable(x, y)) || World.randomOpenNear(c.x, c.y, 0, r1 + 80, (x, y) => !this.reachable(x, y)) || this.snap({ x: c.x, y: c.y });
       out.push(this.enemy(type, sp.x, sp.y, typeof o === 'function' ? o(i) : o));
     }
     return out;
@@ -221,7 +249,7 @@ const St = {
     return { text: d => `${text} (${d.herd ? d.herd.filter(c => !c.dead && dist(c.x, c.y, Story.at(pen).x, Story.at(pen).y) < 70).length : 0}/${need})`,
       enter: d => {
         const c = Story.at(where); d.herd = [];
-        for (let i = 0; i < n; i++) { const sp = World.randomOpenNear(c.x, c.y, 10, 90) || c; const cow = new Animal('cow', sp.x, sp.y); cow.herd = true; G.animals.push(cow); d.herd.push(cow); }
+        for (let i = 0; i < n; i++) { const sp = World.randomOpenNear(c.x, c.y, 10, 90, (x, y) => !Story.reachable(x, y)) || c; const cow = new Animal('cow', sp.x, sp.y); cow.herd = true; G.animals.push(cow); d.herd.push(cow); }
         UI.notify('Ride up behind the cattle to push them. They move away from you.', 'tip');
       },
       marker: d => { const p = Story.at(pen); return [{ x: p.x, y: p.y - 24, label: 'Pen' }, ...d.herd.filter(c => !c.dead && dist(c.x, c.y, p.x, p.y) >= 70).map(c => ({ x: c.x, y: c.y - 16, label: '', small: true }))]; },

@@ -36,7 +36,7 @@ const SideJobs = {
     for (const s of STRANGERS) {
       if (G.actors.some(a => a.stranger === s.name)) continue;
       const c = this.townCenter(s.town); if (!c) continue;
-      const sp = World.randomOpenNear(c.x, c.y, 20, 80, (x, y) => World.tileAtPx(x, y) !== T.FLOOR) || c;
+      const sp = World.randomOpenNear(c.x, c.y, 20, 80, (x, y) => World.tileAtPx(x, y) === T.FLOOR || !Story.reachable(x, y)) || Story.snap(c);
       const a = spawnActor('gang', sp.x, sp.y, { name: s.name, pal: Object.assign({}, s.pal), weapon: null, invuln: true, post: { x: sp.x, y: sp.y, face: Math.PI / 2 } });
       a.stranger = s.name; a.strangerTown = s.town; a.faction = 'civ';
     }
@@ -60,7 +60,7 @@ const SideJobs = {
   offer(a) {
     if (Law.heat > 0) { UI.notify(`${a.name}: "Not with the law on your heels."`, 'info'); return; }
     const tpl = this.jobFor(a), home = this.townCenter(a.strangerTown) || { x: a.x, y: a.y };
-    const spot = World.randomOpenNear(home.x, home.y, 350, 800, (x, y) => { const t = World.tileAtPx(x, y); return t !== T.WATER && t !== T.FLOOR && t !== T.TOWN; }) || { x: home.x + 400, y: home.y };
+    const spot = World.randomOpenNear(home.x, home.y, 350, 800, (x, y) => { const t = World.tileAtPx(x, y); return t === T.WATER || t === T.FLOOR || t === T.TOWN || !Story.reachable(x, y); }) || Story.snap({ x: home.x + 400, y: home.y });
     const others = World.towns.filter(t => t.name !== a.strangerTown && t.pop).map(t => ({ name: t.name, c: this.townCenter(t.name) })).sort((p, q) => dist(home.x, home.y, p.c.x, p.c.y) - dist(home.x, home.y, q.c.x, q.c.y));
     const dest = others[Math.min(others.length - 1, randi(0, 1))] || { name: 'Dustwater', c: World.poi.dwStation };
     const where = this.dirWord(home, spot);
