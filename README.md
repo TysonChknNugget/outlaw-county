@@ -54,12 +54,16 @@ Progress saves to `localStorage` (3 manual slots + autosave).
 | Left click | Shoot / knife |
 | Right click | Steady aim (draws your gun — needed to rob) |
 | R | Reload |
+| Space | Dodge roll |
+| C | Crouch / take cover |
+| G | Throw dynamite or fire bottle (X switches) |
+| V | Steady Nerves (slow time) |
 | Shift | Sprint / gallop |
 | E | Interact, talk, shop, rob, loot, skin, dig |
 | F | Mount / dismount |
 | H | Whistle for your horse |
 | Q | Use a bandage |
-| 1–5 | Knife, revolver (press 2 again to swap revolvers), lever rifle, coach gun, repeater |
+| 1–5 | Fists/knife (press 1 again to swap), revolver (press 2 again to swap revolvers), lever rifle, coach gun, repeater |
 | Mouse wheel | Cycle weapons |
 | Tab | Inventory |
 | M | Map |
