@@ -1,7 +1,7 @@
 {
   "name": "outlaw-county",
   "productName": "Outlaw County",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A 2D open-world western crime sandbox set in the 1890s frontier.",
   "main": "electron/main.js",
   "author": "Outlaw County",
@@ -9,9 +9,10 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "build:win": "electron-builder --win --x64",
+    "build:win": "electron-builder --win --x64 --publish never",
+    "release": "electron-builder --win --x64 --publish never && node scripts/release.js",
     "publish-download": "node scripts/publish-download.js",
-    "dist": "electron-builder --win --x64 && node scripts/publish-download.js"
+    "dist": "electron-builder --win --x64 --publish never && node scripts/publish-download.js"
   },
   "devDependencies": {
     "electron": "^33.2.0",
@@ -34,11 +35,24 @@
     ],
     "asar": true,
     "compression": "maximum",
+    "publish": [
+      { "provider": "github", "owner": "TysonChknNugget", "repo": "outlaw-county", "releaseType": "release" }
+    ],
     "win": {
       "icon": "build/icon.ico",
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "zip", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "artifactName": "OutlawCounty-${version}-win-x64.${ext}"
     },
@@ -53,5 +67,8 @@
       "uninstallerIcon": "build/icon.ico",
       "artifactName": "OutlawCounty-Setup-${version}.${ext}"
     }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
   }
 }

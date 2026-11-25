@@ -19,6 +19,7 @@ const UI = {
     for (const id of ['set-master', 'set-sfx', 'set-music']) $(id).addEventListener('input', () => this.readSettings());
     for (const id of ['set-diff', 'set-zoom', 'set-shake', 'set-fps', 'set-minimap']) $(id).addEventListener('change', () => this.readSettings());
     if (window.ocDesktop) document.body.classList.add('desktop');
+    Updates.init();
     document.addEventListener('fullscreenchange', () => Game.resize());
   },
 
@@ -461,4 +462,56 @@ const UI = {
   },
 
   roundRect(o, x, y, w, h, r) { o.beginPath(); o.moveTo(x + r, y); o.arcTo(x + w, y, x + w, y + h, r); o.arcTo(x + w, y + h, x, y + h, r); o.arcTo(x, y + h, x, y, r); o.arcTo(x, y, x + w, y, r); o.closePath(); }
+};
+
+/* ---------------- desktop app updates ----------------
+ * The Electron app checks GitHub for a newer version, downloads it in the
+ * background and tells the player here. Clicking "Restart & update" saves
+ * (when allowed) and installs it; "Later" installs it the next time they quit. */
+const Updates = {
+  state: null, dismissed: null, announced: null,
+  init() {
+    const d = window.ocDesktop;
+    if (!d || !d.onUpdate) return;
+    d.getVersion().then(v => { $('version').textContent = 'v' + v; });
+    d.getUpdate().then(s => { if (s) this.show(s); });
+    d.onUpdate(s => this.show(s));
+  },
+  show(s) {
+    this.state = s;
+    const el = $('update'), key = s.state + s.version;
+    if (this.dismissed === key || (s.state === 'downloading' && this.dismissed === 'downloading' + s.version)) return;
+    el.classList.remove('hidden');
+    el.classList.toggle('ready', s.state === 'ready');
+    const bar = el.querySelector('.upd-bar'), act = $('upd-actions');
+    act.innerHTML = '';
+    bar.classList.toggle('hidden', s.state !== 'downloading');
+    const btn = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'btn small ' + cls; b.textContent = label; b.onclick = e => { e.stopPropagation(); Sound.play('ui'); fn(); }; act.append(b); };
+    if (s.state === 'downloading') {
+      $('upd-text').innerHTML = `<b>Update v${esc(s.version)}</b> found — downloading in the background… ${s.percent || 0}%`;
+      $('upd-fill').style.width = (s.percent || 0) + '%';
+      btn('Hide', 'ghost', () => { this.dismissed = 'downloading' + s.version; el.classList.add('hidden'); });
+    } else if (s.state === 'ready') {
+      $('upd-text').innerHTML = `<b>Update v${esc(s.version)} is ready!</b><br>Restart the game to install it. Your saves are kept.`;
+      btn('Restart & update', '', () => this.install());
+      btn('Later', 'ghost', () => { this.dismissed = key; el.classList.add('hidden'); UI.notify('The update will install the next time you quit the game.', 'info'); });
+      if (this.announced !== s.version && G.state === 'play') { this.announced = s.version; UI.notify(`Update v${s.version} is ready — restart to install it.`, 'mission'); }
+    } else if (s.state === 'available') {
+      $('upd-text').innerHTML = `<b>Update v${esc(s.version)} is available.</b><br>This portable copy can't update itself — get the new version from the website.`;
+      btn('Get the update', '', () => window.ocDesktop.openDownloadPage());
+      btn('Later', 'ghost', () => { this.dismissed = key; el.classList.add('hidden'); });
+    } else if (s.state === 'error') {
+      $('upd-text').innerHTML = `<b>Update v${esc(s.version)}</b> couldn't finish downloading. It will try again later.`;
+      btn('OK', 'ghost', () => { this.dismissed = key; el.classList.add('hidden'); });
+    }
+  },
+  install() {
+    if (G.state === 'play') {
+      const err = SaveSys.save('auto');
+      if (err && !confirm(`${err}\nUpdate anyway? Progress since your last save will be lost.`)) return;
+    }
+    $('upd-text').innerHTML = '<b>Installing the update…</b> The game will reopen in a moment.';
+    $('upd-actions').innerHTML = '';
+    window.ocDesktop.installUpdate();
+  }
 };

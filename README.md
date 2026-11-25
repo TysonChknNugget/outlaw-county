@@ -100,6 +100,17 @@ node_modules\7zip-bin\win\x64\7za.exe x -y $a.FullName "-o$c\winCodeSign-2.6.0" 
 
 Desktop saves live in Electron's `localStorage` under `%APPDATA%\Outlaw County`, and the app works fully offline.
 
+## Release an update (players update automatically)
+
+Installed copies (v1.1.0 and later) check this repository's GitHub Releases when they start and every 3 hours. When a newer version exists, the game downloads it in the background and shows a notice: **Restart & update** saves (when allowed) and installs it; **Later** installs it the next time the player quits. Saves are kept. The portable ZIP can't replace itself, so it shows a "Get the update" button that opens the website instead.
+
+To publish a new version:
+
+1. Raise `"version"` in `package.json` (e.g. `1.1.0` → `1.2.0`).
+2. Run `npm run release -- "What changed in this version"`
+
+That builds the installer and ZIP, creates GitHub Release `v<version>` with the installer, ZIP, `latest.yml` and `.blockmap` (the files the updater reads), points the website's Download buttons at the new files, and commits and pushes. It needs the GitHub CLI (`gh`) signed in as the repository owner.
+
 ## Publish the website
 
 The site is deployed by `.github/workflows/pages.yml` on every push to `main`. It publishes `index.html`, `css/`, `js/`, `assets/`, `downloads/manifest.js` and the four game scripts the site uses for its live previews (`game/js/util.js`, `data.js`, `world.js`, `sprites.js`). The game page itself is not published.
