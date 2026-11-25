@@ -49,11 +49,11 @@
     <div class="wrap two-col">
       <div>
         <h2 class="section-title">A county with no shortage of trouble</h2>
-        <p class="lead">You stepped off the 4:10 from Abilene with an empty revolver and twenty-five dollars. Boone Hollister's gang needs a steady hand, the railroad needs a lesson, and Sheriff Brannigan needs a reason to hang somebody.</p>
+        <p class="lead">1893. You call yourself Nate Calder and you rob payrolls with Mara Quill's crew. You don't talk about the past. Then a new Commissioner rides into Outlaw County with his private army, the Iron Covenant, and he knows your real name.</p>
         <p>Outlaw County is a top-down open-world western built entirely from hand-coded pixel art. Explore seven frontier towns across eleven regions — snowbound mountain mining camps, a lake port, cattle country, red-rock canyons, white salt flats, badlands and the river border — linked by a railroad that runs the width of the territory. Pick your crimes, earn your bounty and decide how long you can keep running.</p>
         <ul class="facts">
-          <li><b>5</b> story missions</li>
-          <li><b>6</b> frontier weapons</li>
+          <li><b>23</b> story missions</li>
+          <li><b>26</b> frontier weapons</li>
           <li><b>5</b> horse breeds</li>
           <li><b>5</b> wanted levels</li>
         </ul>
@@ -63,7 +63,7 @@
           <div class="poster-head">WANTED</div>
           <div class="poster-sub">DEAD OR ALIVE</div>
           <canvas id="poster-canvas" width="96" height="72"></canvas>
-          <div class="poster-name">THE STRANGER FROM ABILENE</div>
+          <div class="poster-name">NATHANIEL CORD</div>
           <div class="poster-crimes">Train robbery · Bank robbery · Horse theft · Jailbreak</div>
           <div class="poster-reward">$<span id="poster-bounty">5,000</span> REWARD</div>
           <div class="poster-foot">Apply to Sheriff T. Brannigan, Dustwater</div>
@@ -79,10 +79,11 @@
       <p class="section-lead center">Systems that feed into each other: every crime has witnesses, every witness can reach the law, and the law never forgets a face.</p>
       <div class="feature-grid">
         <article class="feature"><div class="f-ico">★</div><h3>A law that hunts you</h3><p>Five wanted levels. Lawmen investigate, search your last known position, take cover, call reinforcements and send mounted posses. Break line of sight to slip away — or pay off your bounty at a station.</p></article>
-        <article class="feature"><div class="f-ico">$</div><h3>Rob anything that moves</h3><p>Hold up general stores, stick up stagecoaches, crack the express car on a stopped train, mug a banker in the street or blow the county vault with the Hollister gang.</p></article>
+        <article class="feature"><div class="f-ico">$</div><h3>Rob anything that moves</h3><p>Hold up general stores, stick up stagecoaches, crack the express car on a stopped train, mug a banker in the street or hit a Covenant payroll on a frozen mountain pass with Mara Quill's crew.</p></article>
         <article class="feature"><div class="f-ico">♞</div><h3>Horses with grit</h3><p>Buy, break or steal five breeds. Horses have momentum, stamina and health, follow you when close and come running when you whistle.</p></article>
         <article class="feature"><div class="f-ico">☀</div><h3>A living frontier</h3><p>A full day and night cycle with lamp-lit streets, campfires and lightning storms. Townsfolk keep daily routines, flee gunfire and run to the sheriff when they see you do wrong.</p></article>
-        <article class="feature"><div class="f-ico">⚑</div><h3>Ride with the gang</h3><p>Five story jobs, from your first holdup to the County Bank Robbery, with Hollister gang members riding at your side. Between jobs, chase wanted posters and bring outlaws in alive for the bigger reward.</p></article>
+        <article class="feature"><div class="f-ico">⚑</div><h3>A story in three chapters</h3><p><i>What the Ground Remembers</i>: 21 story missions and an epilogue across every region, with a crew that rides at your side. Between jobs, take stranger jobs in every town, chase wanted posters and bring outlaws in alive.</p></article>
+        <article class="feature"><div class="f-ico">⚒</div><h3>The arsenal and the tailor</h3><p>26 weapons, from derringers and bows with fire arrows to buffalo guns, a scoped long rifle and mounted crank guns. Hold T for the weapon wheel and upgrade barrels, grips and sights. Tailors in four towns sell hats, coats and disguises.</p></article>
         <article class="feature"><div class="f-ico">✕</div><h3>Smarter gunfights</h3><p>Dodge-roll through gunfire, crouch behind cover, line up precise shots or slow time with Steady Nerves. Sharpshooters, brutes, dynamiters and gunslingers flank, retreat and sometimes surrender. Earn reputation and pick perks as you go.</p></article>
       </div>
     </div>
@@ -95,7 +96,7 @@
       <p class="section-lead center">These views are drawn live by the game's own renderer — the same code you play.</p>
       <div class="gallery" id="gallery">
         <figure class="shot big" data-view="dustwater"><canvas></canvas><figcaption><b>Dustwater</b> Saloon, bank, gunsmith, hotel, stables and the sheriff who runs it all.</figcaption></figure>
-        <figure class="shot" data-view="camp"><canvas></canvas><figcaption><b>Hollister Camp</b> The gang's canyon hideout — your respawn point and fence.</figcaption></figure>
+        <figure class="shot" data-view="camp"><canvas></canvas><figcaption><b>Juniper Canyon</b> The crew's hideout: your respawn point and fence.</figcaption></figure>
         <figure class="shot" data-view="railroad"><canvas></canvas><figcaption><b>Iron Horse Railroad</b> Trains stop at every station. So can you.</figcaption></figure>
         <figure class="shot" data-view="desert"><canvas></canvas><figcaption><b>Red Sand Desert</b> Rattlesnake gang camps, mesas and buried treasure.</figcaption></figure>
         <figure class="shot" data-view="forest"><canvas></canvas><figcaption><b>Pinewood Forest</b> Hunting grounds, trapper cabins and an old silver mine.</figcaption></figure>
@@ -223,6 +224,7 @@
   <script src="game/js/world.js"></script>
   <script src="game/js/world-frontier.js"></script>
   <script src="game/js/sprites.js"></script>
+  <script src="game/js/arsenal.js"></script>
   <script src="js/site.js"></script>
 </body>
 </html>

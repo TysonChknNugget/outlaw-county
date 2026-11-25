@@ -97,7 +97,9 @@ const Sprites = {
     if (o.state === 'dead') return this.corpse(ctx, x, y, p, s, o);
     if (!o.mounted) this.shadow(ctx, x, y, 5, 2);
     const walk = o.moving ? Math.sin(o.animT * 13) : 0;
-    const bob = o.moving && Math.abs(walk) > 0.7 ? -1 : 0;
+    const clock = typeof Game !== 'undefined' && Game.t ? Game.t : performance.now() / 1000;
+    const bob = o.moving ? (Math.abs(walk) > 0.7 ? -1 : 0) : (!o.mounted && o.state !== 'kneel' && Math.sin(clock * 2.3 + x * 0.37) > 0.8 ? -1 : 0);
+    if (o.hurt > 0.12) x -= s;
     const up = Math.sin(face) < -0.55;
     if (o.state === 'kneel') y += 3;
     const drawArmGun = () => {
@@ -125,6 +127,8 @@ const Sprites = {
       } else {
         const l = walk > 0 ? 1 : 0, r = walk < 0 ? 1 : 0;
         R(ctx, p.pants, x - 2 - l * s, y - 5 - l, 2, 4 + l); R(ctx, p.pants, x + 1 + r * s, y - 5 - r, 2, 4 + r);
+        if (p.chaps) { R(ctx, p.chaps, x - 3 - l * s, y - 5 - l, 1, 3); R(ctx, p.chaps, x + 3 + r * s, y - 5 - r, 1, 3); }
+        if (p.dirt) { R(ctx, 'rgba(90,70,40,.45)', x - 2 - l * s, y - 3 - l, 2, 1); R(ctx, 'rgba(90,70,40,.45)', x + 1 + r * s, y - 3 - r, 2, 1); }
         R(ctx, p.boots, x - 2 - l * s, y - 2 - l, 2, 2); R(ctx, p.boots, x + 1 + r * s, y - 2 - r, 2, 2);
       }
     } else {
@@ -132,9 +136,13 @@ const Sprites = {
     }
     const ty = y - 11 + bob;
     // torso
-    if (p.coat) { R(ctx, p.coat, x - 3, ty, 7, 7); R(ctx, p.shirt, x - 1, ty, 2, 4); }
+    if (p.build === 'wide' && !p.dress) R(ctx, p.coat || p.shirt, x - 4, ty, 9, 3);
+    if (p.coat) { R(ctx, p.coat, x - 3, ty, 7, 7); R(ctx, p.shirt, x - 1, ty, 2, 4); if (p.vest) R(ctx, p.vest, x - 1 + (s > 0 ? 1 : 0), ty + 1, 1, 3); }
     else {
       R(ctx, p.shirt, x - 3, ty, 7, 6);
+      if (p.stripes) { R(ctx, 'rgba(30,40,80,.5)', x - 3, ty + 1, 7, 1); R(ctx, 'rgba(30,40,80,.5)', x - 3, ty + 3, 7, 1); }
+      if (p.shawl) { R(ctx, p.shawl, x - 3, ty, 7, 2); R(ctx, p.shawl, x - 3, ty + 2, 1, 2); }
+      if (p.tape) R(ctx, '#d8c050', x - 3 + (s > 0 ? 5 : 1), ty, 1, 4);
       if (p.vest) { R(ctx, p.vest, x - 3, ty + 1, 2, 5); R(ctx, p.vest, x + 2, ty + 1, 2, 5); }
       if (p.poncho) { R(ctx, p.poncho, x - 4, ty + 1, 9, 4); R(ctx, '#e8d8b0', x - 4, ty + 3, 9, 1); }
     }
@@ -145,7 +153,16 @@ const Sprites = {
     if (p.bandana) R(ctx, p.bandana, x - 2, ty - 1, 5, 2);
     // head
     R(ctx, p.skin, x - 2, ty - 4, 5, 4);
-    if (!up) { R(ctx, '#2a1a10', x + (s > 0 ? 1 : -1), ty - 3, 1, 1); if (o.masked) R(ctx, p.bandana || '#222', x - 2, ty - 2, 5, 2); }
+    if (!up) {
+      const front = Math.sin(face) > 0.6;
+      if (p.hair && p.hatType !== 'none' && p.hatType !== 'bonnet') R(ctx, p.hair, front ? x - 2 : x + (s > 0 ? -2 : 2), ty - 3, 1, 2);
+      if (p.hair && p.hatType === 'none') R(ctx, p.hair, x - 2, ty - 4, 5, 1);
+      if (front) { R(ctx, '#2a1a10', x - 1, ty - 3, 1, 1); R(ctx, '#2a1a10', x + 1, ty - 3, 1, 1); }
+      else R(ctx, '#2a1a10', x + (s > 0 ? 1 : -1), ty - 3, 1, 1);
+      if (p.beard) { R(ctx, p.beard, x - 2, ty - 1, 5, 1); R(ctx, p.beard, front ? x - 1 : x + (s > 0 ? 0 : -2), ty - 2, front ? 3 : 3, 1); }
+      else if (p.mustache) R(ctx, p.mustache, front ? x - 1 : x + (s > 0 ? 0 : -2), ty - 2, 3, 1);
+      if (o.masked) R(ctx, p.bandana || '#222', x - 2, ty - 2, 5, 2);
+    }
     else R(ctx, p.hair || '#3a2414', x - 2, ty - 4, 5, 3);
     this.hat(ctx, x, ty + 11, p, s);
     // arms

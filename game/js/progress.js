@@ -342,7 +342,7 @@ const Discovery = {
   clearWaypoint() { G.world.waypoint = null; }
 };
 
-function markerColor(m) { return m.kind === 'waypoint' ? '#c890ff' : m.kind === 'giver' ? '#ffcf40' : '#f8e050'; }
+function markerColor(m) { return m.kind === 'waypoint' ? '#c890ff' : m.kind === 'giver' ? '#ffcf40' : m.kind === 'stranger' ? '#8ad0ff' : '#f8e050'; }
 
 /* every marker the HUD, minimap and map should show */
 function allMarkers() {

@@ -28,7 +28,12 @@ game/js/world.js           Procedural county, buildings & interiors, collision, 
 game/js/sprites.js         Procedural pixel-art drawing for every character, horse, vehicle, prop and building
 game/js/entities.js        Particles, bullets, player, NPC AI, horses, wildlife, train, stagecoach
 game/js/systems.js         Day/night & weather & lighting, law/bounty system, economy, interactions, population spawner
-game/js/missions.js        Mission framework + the five story missions
+game/js/missions.js        Mission framework
+game/js/story.js           Campaign cast, camp, story state and mission stage builders
+game/js/chapter1-3.js      The 21 story missions, the prologue and the epilogue
+game/js/arsenal.js         Extra weapons, weapon wheel, gun upgrades, bows, crank guns
+game/js/looks.js           Townsfolk variety, tailors, outfits and disguises
+game/js/sidejobs.js        Stranger side jobs in every town
 game/js/ui.js              HUD, notifications, dialogue, shops, inventory, map, menus, settings, save slots
 game/js/main.js            Game state, main loop, camera, renderer, save system
 electron/main.js           Electron main process (window, fullscreen, single instance)
@@ -63,7 +68,8 @@ Progress saves to `localStorage` (3 manual slots + autosave).
 | F | Mount / dismount |
 | H | Whistle for your horse |
 | Q | Use a bandage |
-| 1–5 | Fists/knife (press 1 again to swap), revolver (press 2 again to swap revolvers), lever rifle, coach gun, repeater |
+| 1–5 | Weapon slots: melee, sidearms, rifles, shotguns, specials (press again to cycle within the slot) |
+| Hold T | Weapon wheel (release to equip) |
 | Mouse wheel | Cycle weapons |
 | Tab | Inventory |
 | M | Map |
@@ -134,15 +140,18 @@ Then update the version and URLs in `downloads/manifest.js` (and the Portable ZI
 - **Original county:** a 320×240-tile county — Dustwater (saloon, sheriff, general store, bank, gunsmith, hotel, stables, chapel, houses, square, station), Mesa Flats, Pinewood Forest with cabins, a pond and the Silverline Mine, the Red Sand Desert with mesas, Rattlesnake camps, abandoned camps and buried treasure, the Sweetwater River and its dry wash, the Iron Horse Railroad with bridges, two stations and a running train, and the Hollister canyon hideout.
 - **Crime & law:** witnesses report crimes; five wanted levels; lawmen investigate, search, take cover, call reinforcements and mounted posses, and try to arrest you at low heat. Escape by breaking line of sight, hiding or leaving the area; pay off your bounty at a station or sheriff's office.
 - **Economy:** shops, gunsmith, stables (with trade-in), saloon meals and rumors, hotel rooms (sleep + save), train tickets, a fence for stolen goods, a trapper for pelts.
-- **Missions:** Outlaw Introduction, General Store Robbery, Stagecoach Ambush, Prisoner Rescue, County Bank Robbery. New missions are added with `MissionSys.register({...})` in `game/js/missions.js`.
+- **Story (v2.0):** *What the Ground Remembers*, a prologue, three chapters of seven missions each and a two-part epilogue, with Mara Quill's crew riding at your side. Older saves keep money and gear and restart the story at Chapter 1.
+- **Arsenal (v2.0):** 26 weapons including derringer, cap-and-ball, top-break and long-barrel revolvers, a self-loading pistol, brass-frame lever rifle, saddle carbine, buffalo, rolling-block, bolt-action and scoped rifles, double-barrel, sawed-off, pump and semi-auto shotguns, machete, tomahawk, bow with fire arrows and throwing knives, plus mounted crank guns at Fort Granger. Gunsmith upgrades: barrel, grip, sights, engraving.
+- **Looks & tailor (v2.0):** townsfolk with their own faces, hair, beards, builds and regional clothes; idle breathing, hit flinches and falling deaths; tailors in Dustwater, Silver Crown, Port Harlow and San Lucero with three saved outfits; changing clothes while wanted is a disguise.
+- **Stranger jobs (v2.0):** a stranger in each of seven towns offers replayable jobs: claim jumpers, deliveries, runaway horses, man-eaters, bad debts and escorts.
 
 ## Adding a mission
 
 ```js
 MissionSys.register({
-  id: 'my_job', title: 'My Job', giver: 'boone', giverName: 'Boone Hollister', requires: ['bank'], reward: 200,
-  hint: 'Boone has one more job.',
-  intro: [{ who: 'Boone Hollister', text: 'Listen close...' }],
+  id: 'my_job', title: 'My Job', giver: 'mara', giverName: 'Mara Quill', requires: ['e2'], reward: 200,
+  hint: 'Mara has one more job.',
+  intro: [{ who: 'Mara Quill', text: 'Listen close...' }],
   stages: [
     { text: 'Ride to Mesa Flats.', marker: () => ({ x: World.poi.mfStore.x, y: World.poi.mfStore.y, label: 'Mesa Flats' }),
       done: () => nearPlayer(World.poi.mfStore.x, World.poi.mfStore.y, 100) }

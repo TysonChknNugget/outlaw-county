@@ -122,3 +122,13 @@ const Input = {
     this.mouse.clicked = false; this.mouse.rclicked = false; this.wheel = 0;
   }
 };
+
+/* ---------------- Hooks: lets add-on systems (arsenal, looks, story, side jobs) plug into the core loop ---------------- */
+const Hooks = {
+  list: [],
+  add(h) { this.list.push(h); },
+  run(name, ...args) { for (const h of this.list) if (h[name]) h[name](...args); },
+  collect(name, ...args) { const out = []; for (const h of this.list) if (h[name]) { const r = h[name](...args); if (r) out.push(...r); } return out; },
+  save() { const o = {}; this.list.forEach((h, i) => { if (h.save) o[h.key || i] = h.save(); }); return o; },
+  load(ext, s) { this.list.forEach((h, i) => { if (h.load) h.load((ext || {})[h.key || i], s); }); }
+};

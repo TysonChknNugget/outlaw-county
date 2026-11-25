@@ -297,7 +297,7 @@ const UI = {
     const close = z >= 1.2;
     for (const [n, tx, ty] of regions.slice(0, close ? 10 : 7)) if (seen(tx * TS, ty * TS)) label(n, px(tx * TS), py(ty * TS), '#4a3a22', Math.round(fs * 1.1));
     for (const t of World.towns) if (G.world.discovered.includes(t.name) || seen((t.x0 + t.x1) / 2 * TS, (t.y0 + t.y1) / 2 * TS)) label(t.name, px((t.x0 + t.x1) / 2 * TS), py(t.y0 * TS) - 4);
-    if (MissionSys.flags.hideout) label('Hollister Camp', px(World.poi.hideout.x), py(World.poi.hideout.y) - 22);
+    if (MissionSys.flags.hideout) { const cp = Story.campPos(); label(Story.campName(), px(cp.x), py(cp.y) - 22); }
     if (close) label("Marshal's Camp", px(World.poi.marshalCamp.x), py(World.poi.marshalCamp.y) - 10, '#4a2a1a');
     for (const [n, poi] of [['Hollow Creek', World.poi.hollowCreek], ['Last Water', World.poi.lastWater], ['Silver Crown Mine', World.poi.silverMine]]) if (close && poi && seen(poi.x, poi.y)) label(n, px(poi.x), py(poi.y) - 12, '#3a2a2a');
     for (const cp of World.banditCamps) if (seen(cp.x, cp.y)) { g.fillStyle = '#8a1a1a'; g.beginPath(); g.arc(px(cp.x), py(cp.y), 5, 0, TAU); g.fill(); if (close) label(cp.name, px(cp.x), py(cp.y) - 8, '#7a1a1a'); }
@@ -332,7 +332,7 @@ const UI = {
       if (mode === 'save' && s.slot === 'auto') continue;
       const row = document.createElement('div'); row.className = 'row slot';
       const m = s.meta;
-      row.innerHTML = `<div class="r-main"><div><b>${s.slot === 'auto' ? 'Autosave' : 'Slot ' + s.slot}</b><small>${m ? `Day ${m.day} · ${esc(m.region)} · ${formatMoney(m.money)} · ${m.missions}/5 missions · ${new Date(m.savedAt).toLocaleString()}` : 'Empty'}</small></div></div>`;
+      row.innerHTML = `<div class="r-main"><div><b>${s.slot === 'auto' ? 'Autosave' : 'Slot ' + s.slot}</b><small>${m ? `Day ${m.day} · ${esc(m.region)} · ${formatMoney(m.money)} · ${m.missions}/23 missions · ${new Date(m.savedAt).toLocaleString()}` : 'Empty'}</small></div></div>`;
       const b = document.createElement('button'); b.className = 'btn small';
       if (mode === 'save') {
         b.textContent = m ? 'Overwrite' : 'Save';
@@ -517,6 +517,7 @@ const UI = {
     o.globalAlpha = 1;
     // mission markers + edge arrows
     for (const m of allMarkers()) {
+      if (m.kind === 'stranger' && dist(m.x, m.y, G.player.x, G.player.y) > 420) continue;
       const on = Game.onScreen(m.x, m.y, -10);
       if (on) {
         const bob = Math.sin(t * 4) * 3 * dpr, x = sx(m.x), y = sy(m.y) + bob;

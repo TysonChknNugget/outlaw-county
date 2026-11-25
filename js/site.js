@@ -246,6 +246,7 @@
     const reloadFull = w => w.melee ? 0 : (w.reload === 'single' ? w.reloadTime * w.cap : w.reloadTime);
     for (const k of WEAPON_ORDER) {
       const w = WEAPONS[k];
+      if (w.withBow) continue;
       const dmg = w.dmg * (w.pellets || 1);
       const stats = [
         ['Damage', Math.min(1, dmg / 110), w.pellets ? `${w.dmg}×${w.pellets}` : dmg],
@@ -253,12 +254,12 @@
         ['Range', w.melee ? 0.05 : w.range / 560, w.melee ? 'melee' : Math.round(w.range / TS * 2) + 'yd'],
         ['Accuracy', w.accuracy, Math.round(w.accuracy * 100) + '%'],
         ['Reload', w.melee ? 1 : 1 - Math.min(1, reloadFull(w) / 5.5), w.melee ? '—' : reloadFull(w).toFixed(1) + 's'],
-        ['Capacity', w.melee ? 1 : w.cap / 10, w.melee ? '∞' : w.cap]
+        ['Capacity', w.melee ? 1 : Math.min(1, w.cap / 10), w.melee ? '∞' : w.cap]
       ];
       const card = document.createElement('article'); card.className = 'weapon';
       card.innerHTML = `<canvas width="180" height="60"></canvas><h3>${w.name}</h3><p>${w.desc}</p>` +
         stats.map(([n, v, t]) => `<div class="stat"><span>${n}</span><span class="track"><span class="fill" data-v="${v}"></span></span><span class="val">${t}</span></div>`).join('') +
-        `<span class="price-tag">${w.price ? '$' + w.price + ' at the gunsmith' : (k === 'knife' ? 'Starting gear' : 'Your starting sidearm')}</span>`;
+        `<span class="price-tag">${w.price ? '$' + w.price + ' at the gunsmith' : (k === 'knife' || k === 'fists' ? 'Starting gear' : 'Your starting sidearm')}</span>`;
       Sprites.weaponIcon(card.querySelector('canvas').getContext('2d'), k, 0, 0, 5);
       grid.append(card);
       new IntersectionObserver((es, ob) => es.forEach(e => { if (e.isIntersecting) { card.querySelectorAll('.fill').forEach(f => f.style.width = (+f.dataset.v * 100) + '%'); ob.disconnect(); } }), { threshold: 0.3 }).observe(card);

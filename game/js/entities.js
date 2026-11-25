@@ -326,15 +326,8 @@ class Player extends Ent {
     this.inBuilding = World.buildingAt(this.x, this.y);
 
     // weapon selection
-    if (Input.hit('Digit1')) this.select(this.cur === 'fists' ? 'knife' : 'fists');
-    if (Input.hit('Digit2')) {
-      if ((this.cur === 'sa' || this.cur === 'da') && this.owned.sa && this.owned.da) this.select(this.cur === 'sa' ? 'da' : 'sa');
-      else this.select(this.owned[this.lastRevolver] ? this.lastRevolver : (this.owned.sa ? 'sa' : 'da'));
-    }
-    if (Input.hit('Digit3')) this.select('lever');
-    if (Input.hit('Digit4')) this.select('shotgun');
-    if (Input.hit('Digit5')) this.select('repeater');
-    if (Input.wheel) {
+    if (!this.turret) for (let n = 1; n <= 5; n++) if (Input.hit('Digit' + n)) Arsenal.slotKey(n);
+    if (Input.wheel && !this.turret && !Arsenal.wheel) {
       const list = WEAPON_ORDER.filter(k => this.owned[k]);
       const i = list.indexOf(this.cur);
       this.select(list[(i + (Input.wheel > 0 ? 1 : -1) + list.length) % list.length]);
@@ -342,7 +335,7 @@ class Player extends Ent {
     if (Input.hit('KeyR')) this.startReload();
     if (Input.hit('KeyQ')) Economy.useItem('bandage');
     if (Input.hit('KeyH')) this.whistle();
-    if (Input.hit('KeyF')) this.toggleMount();
+    if (Input.hit('KeyF') && !this.turret) this.toggleMount();
     if (Input.mouse.down && !Interact.action && !(Law.arrest && Law.arrest.surrendering)) this.tryFire();
     this.updateReload(dt);
     if (this.cockT > 0) { const b = this.cockT; this.cockT -= dt; if (b > 0.16 && this.cockT <= 0.16) Sound.play('cock', this.x, this.y, 0.8); }
@@ -350,8 +343,9 @@ class Player extends Ent {
   }
 
   select(key) {
-    if (!this.owned[key] || this.cur === key) return;
-    this.cur = key; this.reload = null; this.drawnT = 1.2; this.fireCD = Math.max(this.fireCD, 0.25);
+    if (!this.owned[key] || this.cur === key || this.turret) return;
+    if (this.mag[key] === undefined) this.mag[key] = 0;
+    this.cur = key; Arsenal.onSelect(key); this.reload = null; this.drawnT = 1.2; this.fireCD = Math.max(this.fireCD, 0.25);
     if (key === 'sa' || key === 'da') this.lastRevolver = key;
     Sound.play('click', this.x, this.y, 0.7);
   }
@@ -374,7 +368,7 @@ class Player extends Ent {
     this.mag[this.cur]--;
     const a = this.face;
     let sm = 1;
-    if (this.moving) sm *= 1.5; if (this.mounted) sm *= 1.35; if (this.sprinting) sm *= 1.5; if (Input.mouse.rdown) sm *= 0.55;
+    if (this.moving) sm *= 1.5; if (this.mounted) sm *= w.mountedSteady ? 1.1 : 1.35; sm *= Arsenal.spreadMul(this.cur); if (this.sprinting) sm *= 1.5; if (Input.mouse.rdown) sm *= 0.55;
     if (Combat.nervesOn) sm *= 0.4;
     const crit = this.steady >= 1;
     if (crit) sm *= 0.3;
@@ -384,16 +378,17 @@ class Player extends Ent {
     const n = w.pellets || 1;
     for (let i = 0; i < n; i++) Bullets.fire(mx, my + (hy - 8), a + rand(-1, 1) * w.spread * sm, this.cur, this, 'player', dmgMul, crit);
     this.steady = 0; this.lastFire = 0;
-    FX.muzzle(mx, my, a, n > 1 || w.ammo === 'rifle');
+    if (!w.silent) FX.muzzle(mx, my, a, n > 1 || w.ammo === 'rifle' || w.ammo === 'heavy' || this.cur === 'crank');
     Sound.play(w.sound, this.x, this.y);
     this.fireCD = w.rate; this.recoil = 1; this.drawnT = 3;
-    if (G.settings.shake) G.cam.shake = Math.max(G.cam.shake, w.recoil * 0.9);
-    G.cam.kick = w.recoil;
+    const rk = w.recoil * Arsenal.recoilMul(this.cur);
+    if (G.settings.shake) G.cam.shake = Math.max(G.cam.shake, rk * 0.9);
+    G.cam.kick = rk;
     if (w.cock) this.cockT = 0.34;
     if (w.lever) this.leverT = 0.45;
-    if (this.cur === 'repeater') FX.shell(this.x, this.y - 8, a);
+    if (w.eject === 'each') FX.shell(this.x, this.y - 8, a);
     G.stats.shots++;
-    Law.gunfire(this.x, this.y, this);
+    if (!w.silent) Law.gunfire(this.x, this.y, this);
   }
 
   startReload() {
@@ -402,12 +397,13 @@ class Player extends Ent {
     if (this.ammo[w.ammo] <= 0) { Floaters.add(this.x, this.y - 22, 'No ' + AMMO[w.ammo].name, '#ff9a7a'); Sound.play('empty', this.x, this.y); return; }
     this.reload = { t: (w.reloadTime + (w.reload === 'single' ? 0.25 : 0)) * this.reloadMul(), key: this.cur };
     this.drawnT = 2;
-    if (this.cur === 'sa' || this.cur === 'da') {
+    if (w.silent || w.proj) Sound.play('click', this.x, this.y, 0.4);
+    else if (w.eject === 'cyl') {
       Sound.play('cylinder', this.x, this.y);
       for (let i = this.mag[this.cur]; i < w.cap; i++) FX.shell(this.x, this.y - 8, this.face + rand(-0.4, 0.4));
-    } else if (this.cur === 'shotgun') {
+    } else if (w.eject === 'break') {
       Sound.play('click', this.x, this.y);
-      for (let i = this.mag.shotgun; i < 2; i++) FX.shell(this.x, this.y - 8, this.face);
+      for (let i = this.mag[this.cur]; i < w.cap; i++) FX.shell(this.x, this.y - 8, this.face);
     } else Sound.play('click', this.x, this.y, 0.6);
   }
 
@@ -424,11 +420,11 @@ class Player extends Ent {
     } else {
       const n = Math.min(w.cap - this.mag[this.cur], this.ammo[w.ammo]);
       this.mag[this.cur] += n; this.ammo[w.ammo] -= n; this.reload = null;
-      Sound.play(this.cur === 'shotgun' ? 'cock' : 'lever', this.x, this.y);
+      if (!w.proj) Sound.play(w.ammo === 'shells' || w.cock ? 'cock' : 'lever', this.x, this.y);
     }
   }
 
-  reloadMul() { return Progress.has('quickhands') ? 0.7 : 1; }
+  reloadMul() { return (Progress.has('quickhands') ? 0.7 : 1) * Arsenal.reloadMul(this.cur); }
 
   hurt(dmg, src, angle) {
     if (this.invuln > 0 || this.dead) return;
@@ -506,7 +502,7 @@ class Player extends Ent {
 
   drawOpts(mounted) {
     return {
-      face: this.face, moving: this.moving && !mounted, animT: this.animT, pal: PAL.player, weapon: this.cur, drawn: this.drawn,
+      face: this.face, moving: this.moving && !mounted, animT: this.animT, pal: Looks.playerPal(), weapon: this.cur, drawn: this.drawn,
       recoil: this.recoil, reload: this.reload ? (this.reload.t + 0.01) : 0, swing: this.swingT > 0 ? this.swingT / 0.25 : 0,
       holster: this.cur !== 'knife', longgun: this.owned.lever || this.owned.repeater, mounted, hurt: this.hurtT,
       state: this.dead ? 'dead' : (Law.arrest && Law.arrest.surrendering ? 'handsup' : (this.crouch && !mounted ? 'kneel' : 'normal')), deadT: this.deathT, masked: Law.heat > 0
@@ -1141,12 +1137,13 @@ class Animal extends Ent {
       if (dP > 300) this.state = 'graze';
       else if (dP < (this.kind === 'bear' ? 15 : 12)) { if (this.biteCD <= 0) { P.hurt(this.bite, this, Math.atan2(P.y - this.y, P.x - this.x)); this.biteCD = this.kind === 'bear' ? 1.4 : 1.1; Sound.play('punch', this.x, this.y); } }
       else this.steer(P.x, P.y, this.speed * 0.9, dt);
-    } else if (this.state === 'flee' || (dP < (this.kind === 'cow' ? 30 : P.sprinting || P.mounted ? 110 : 60) && !P.dead)) {
+    } else if (this.state === 'flee' || (dP < (this.kind === 'cow' ? (this.herd ? 60 : 30) : P.sprinting || P.mounted ? 110 : 60) && !P.dead)) {
       if (this.state !== 'flee') this.timer = rand(2, 4);
       this.state = 'flee';
       const a = Math.atan2(this.y - P.y, this.x - P.x);
       this.steer(this.x + Math.cos(a) * 50, this.y + Math.sin(a) * 50, this.speed, dt);
-      if (this.timer <= 0 || (this.kind === 'cow' && dP > 70)) this.state = 'graze';
+      if (this.herd) this.home = { x: this.x, y: this.y };
+      if (this.timer <= 0 || (this.kind === 'cow' && dP > (this.herd ? 90 : 70))) this.state = 'graze';
     } else {
       if (this.timer <= 0) { this.goal = chance(0.5) ? World.randomOpenNear(this.home.x, this.home.y, 0, 90) : null; this.timer = rand(2, 6); }
       if (this.goal && this.steer(this.goal.x, this.goal.y, 22, dt) === false) this.goal = null;

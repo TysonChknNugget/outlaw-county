@@ -19,7 +19,7 @@ const SaveSys = {
   serialize() {
     const P = G.player, h = P.horse && !P.horse.dead ? P.horse : null;
     return {
-      version: 1,
+      version: 2,
       meta: { savedAt: Date.now(), day: Env.day(), region: G.region || World.regionAt(P.x, P.y), money: P.money, missions: MissionSys.completed.length },
       time: G.time, weather: Env.weather,
       player: { x: P.x, y: P.y, hp: P.hp, money: P.money, owned: P.owned, mag: P.mag, ammo: P.ammo, cur: P.cur, inv: P.inv, mounted: !!P.mounted,
@@ -29,7 +29,8 @@ const SaveSys = {
       law: { bounty: Law.bounty },
       missions: { completed: MissionSys.completed, flags: MissionSys.flags },
       world: Object.assign({}, G.world, { explored: Discovery.encode(G.world.explored || Discovery.fresh()), camps: World.banditCamps.map(c => c.members.length && c.members.every(m => m.dead) ? (c.clearedAt >= 0 ? c.clearedAt : G.time) : -1) }),
-      stats: G.stats
+      stats: G.stats,
+      ext: Hooks.save()
     };
   },
   save(slot) {
@@ -54,7 +55,10 @@ const LOADING_TIPS = [
   'Trains stop at every station. That\'s your chance to crack the express car.',
   'Press H to whistle and your horse will come running.',
   'Galloping drains your horse\'s stamina. Feed it oats to keep it fresh.',
-  'Old Silas at the Hollister camp buys stolen goods, no questions asked.',
+  'Old Silas at Juniper Canyon buys stolen goods, no questions asked.',
+  'Hold T for the weapon wheel. Gunsmiths sell barrels, grips, sights and gold engraving for the gun in your hand.',
+  'Change clothes at a tailor while you have a bounty and the law will have a hard time matching your face to the poster.',
+  'Strangers in every town have side jobs. Look for the ★ on your map.',
   'Buy a round at the saloon and someone might let slip where treasure is buried.',
   'The single-action hits hard but you have to thumb the hammer between shots.',
   'Pelts sell best at Trapper Jo\'s cabin in Pinewood Forest.',
@@ -174,6 +178,8 @@ const Game = {
     for (const c of World.banditCamps) c.clearedAt = -99999;
     Env.setWeather('clear'); Env.weatherT = 240;
     Spawner.encounterT = 90; Spawner.coachT = 30;
+    G.pickups = [];
+    Hooks.run('reset');
   },
 
   async newGame() {
@@ -187,12 +193,7 @@ const Game = {
     });
     G.state = 'play'; this.snapCamera(); UI.enterGame(); UI.fade(1.5);
     G.region = World.regionAt(G.player.x, G.player.y);
-    setTimeout(() => UI.dialogue([
-      { who: 'Dustwater, 1893', text: "The 4:10 from Abilene hisses to a stop. You step onto the platform with a near-empty revolver, twenty-five dollars, and a telegram." },
-      { who: 'Telegram', text: "COME TO DUSTWATER STOP ASK FOR BOONE AT THE RUSTY SPUR SALOON STOP WORK FOR A STEADY HAND STOP" },
-      { who: 'Controls', text: "WASD move · Shift sprint · Mouse aim · Left click shoot · Right click steady aim · R reload · E interact · F mount · Tab inventory · M map · Esc pause." },
-      { who: 'Gunfighting', text: "Space dodge-rolls · C crouches behind cover · G throws dynamite · V slows time with Steady Nerves · Hold right click until the crosshair turns gold for a precise shot." }
-    ]), 900);
+    setTimeout(() => UI.dialogue(Story.opening()), 900);
   },
 
   async load(slot) {
@@ -230,6 +231,7 @@ const Game = {
     }
     if (s.world.camps) s.world.camps.forEach((v, i) => { if (v >= 0 && World.banditCamps[i]) { World.banditCamps[i].members.forEach(m => { m.dead = true; m.removeMe = true; }); World.banditCamps[i].clearedAt = v; } });
     if (s.weather) Env.setWeather(s.weather);
+    Hooks.load(s.ext || {}, s);
     MissionSys.placeGivers();
     this.snapCamera();
   },
@@ -294,14 +296,14 @@ const Game = {
     if (!P.dead) return;
     UI.hideDeath();
     const hide = MissionSys.flags.hideout;
-    const pos = hide ? { x: World.poi.hideoutFire.x + 30, y: World.poi.hideoutFire.y + 20 } : World.poi.dwHotelDoor;
+    const cp = Story.campPos(), pos = hide ? { x: cp.x + 30, y: cp.y + 20 } : World.poi.dwHotelDoor;
     P.x = pos.x; P.y = pos.y + 4; P.dead = false; P.hp = P.maxHp; P.stamina = 100; P.invuln = 3; P.vx = P.vy = 0; P.reload = null;
     if (P.ammo.revolver < 12) P.ammo.revolver = 12;
     Law.clearHeat('died');
     for (const a of G.actors) if (a.faction === 'rival') a.aggro = false;
     G.time += 120;
     this.snapCamera(); UI.fade(1.2);
-    UI.notify(hide ? 'You came to at the Hollister camp, patched up by Mags.' : 'You woke up at the Grand Frontier Hotel, patched up by the town doctor.', 'info');
+    UI.notify(hide ? `You came to at ${Story.campName()}, patched up by June Pettibone.` : 'You woke up at the Grand Frontier Hotel, patched up by the town doctor.', 'info');
   },
   sleep() {
     const h = Env.hour(), add = ((24 - h + 7) % 24 || 24) * 60;
@@ -380,14 +382,16 @@ const Game = {
     for (const l of G.tempLights) l.life -= wdt;
     G.tempLights = G.tempLights.filter(l => l.life > 0);
     MissionSys.update(dt);
+    Hooks.run('update', dt);
     Bounties.update(dt);
     Events.update(dt);
     Discovery.update(dt);
     Spawner.update(dt);
     // camera
     const c = G.cam, mw = G.mouseWorld;
-    const look = P.dead ? 0 : (Input.mouse.rdown ? 0.35 : 0.18);
-    const tx = P.x - this.vw / 2 + clamp((mw.x - P.x) * look, -90, 90), ty = P.y - 8 - this.vh / 2 + clamp((mw.y - P.y) * look, -60, 60);
+    const scope = !P.dead && Input.mouse.rdown && WEAPONS[P.cur].zoom;
+    const look = P.dead ? 0 : scope ? 0.75 : (Input.mouse.rdown ? 0.35 : 0.18), lx = scope ? 300 : 90, ly = scope ? 200 : 60;
+    const tx = P.x - this.vw / 2 + clamp((mw.x - P.x) * look, -lx, lx), ty = P.y - 8 - this.vh / 2 + clamp((mw.y - P.y) * look, -ly, ly);
     const k = 1 - Math.exp(-dt * (P.mounted ? 7 : 5));
     c.x += (tx - c.x) * k; c.y += (ty - c.y) * k;
     c.x = clamp(c.x, 0, World.W * TS - this.vw); c.y = clamp(c.y, 0, World.H * TS - this.vh);
@@ -471,6 +475,7 @@ const Game = {
       }
     }
     Combat.draw(ctx, t);
+    Hooks.run('drawWorld', ctx);
     Bullets.draw(ctx);
     FX.draw(ctx, x0, y0, x1, y1);
     // screen-space lighting and weather

@@ -466,7 +466,7 @@ const World = {
   regionAt(x, y) {
     const town = this.townAt(x, y); if (town) return town.name;
     const tx = x / TS, ty = y / TS;
-    if (dist(tx, ty, 255, 50) < 24) return 'Hollister Canyon';
+    if (dist(tx, ty, 255, 50) < 24) return 'Juniper Canyon';
     if (dist(tx, ty, 152, 92) < 10) return "Marshal's Camp";
     for (const c of this.banditCamps) if (dist(x, y, c.x, c.y) < 140) return c.name;
     if (Math.abs(ty - RAIL_ROW) < 4) return 'Iron Horse Railroad';

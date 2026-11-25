@@ -174,7 +174,8 @@
         <div><kbd>E</kbd> Interact / rob / talk / hogtie</div>
         <div><kbd>F</kbd> Mount or dismount</div>
         <div><kbd>H</kbd> Whistle for your horse</div>
-        <div><kbd>1–5</kbd> Select weapon (1 fists/knife, 2 revolvers)</div>
+        <div><kbd>1–5</kbd> Weapon slots: melee, sidearms, rifles, shotguns, specials (press again to cycle)</div>
+        <div><kbd>Hold T</kbd> Weapon wheel</div>
         <div><kbd>Wheel</kbd> Cycle weapons</div>
         <div><kbd>Q</kbd> Use a bandage</div>
         <div><kbd>Tab</kbd> Inventory</div>
@@ -191,7 +192,7 @@
         <li>Break line of sight, hide in bushes or buildings, or ride far away to lose a search.</li>
         <li>Pay off your bounty at a train station or sheriff's office when nobody is chasing you.</li>
         <li>Hold right mouse and press E near a clerk to rob a store. Trains can be robbed while stopped at a station.</li>
-        <li>Sell pelts at general stores or the trapper, and stolen goods to Old Silas at the Hollister camp.</li>
+        <li>Sell pelts at general stores or the trapper, and stolen goods to Old Silas at Juniper Canyon Camp.</li>
       </ul>
       <div class="menu-buttons row-buttons"><button class="btn ghost" data-act="back">Back</button></div>
     </div>
@@ -221,6 +222,8 @@
     </div>
   </div>
 
+  <div id="wheel" class="hidden"><canvas id="wheel-canvas" width="440" height="440"></canvas><div class="wheel-hint">Release T to equip</div></div>
+
   <!-- ================= Inventory ================= -->
   <div id="inventory" class="screen hidden">
     <div class="panel-box xwide">
@@ -239,7 +242,7 @@
     <div class="panel-box map-box">
       <div class="shop-head"><h2>Map of Outlaw County</h2><div id="map-info" class="muted"></div></div>
       <canvas id="map-canvas"></canvas>
-      <div class="legend"><span class="lg you">You</span><span class="lg obj">Objective</span><span class="lg horse">Your horse</span><span class="lg camp">Rattlesnake camp</span><span class="lg x">Treasure</span><span class="lg wp">Waypoint</span><span class="muted map-hint">Scroll to zoom · drag to pan · click to set a waypoint · right-click to clear</span></div>
+      <div class="legend"><span class="lg you">You</span><span class="lg obj">Objective</span><span class="lg horse">Your horse</span><span class="lg camp">Rattlesnake camp</span><span class="lg x">Treasure</span><span class="lg wp">Waypoint</span><span class="lg st">Stranger job</span><span class="muted map-hint">Scroll to zoom · drag to pan · click to set a waypoint · right-click to clear</span></div>
       <div class="menu-buttons row-buttons"><button class="btn ghost" data-act="close">Close (M)</button></div>
     </div>
   </div>
@@ -263,6 +266,13 @@
   <script src="js/progress.js"></script>
   <script src="js/missions.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/arsenal.js"></script>
+  <script src="js/looks.js"></script>
+  <script src="js/story.js"></script>
+  <script src="js/chapter1.js"></script>
+  <script src="js/chapter2.js"></script>
+  <script src="js/chapter3.js"></script>
+  <script src="js/sidejobs.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

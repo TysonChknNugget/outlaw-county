@@ -347,7 +347,7 @@ const Economy = {
       } else if (kind === 'weapon') {
         const w = WEAPONS[key], price = cost(w.price);
         out.push({ name: w.name, desc: w.desc, price, weapon: key, note: P.owned[key] ? 'Owned' : `Dmg ${w.dmg}${w.pellets ? '×' + w.pellets : ''} · Cap ${w.cap}`, can: !P.owned[key] && P.money >= price, reason: P.owned[key] ? 'Owned' : null,
-          buy: () => { P.money -= price; P.owned[key] = true; P.mag[key] = w.cap; if (P.ammo[w.ammo] < AMMO[w.ammo].box) P.ammo[w.ammo] = AMMO[w.ammo].box; P.select(key); UI.notify(`Purchased the ${w.name}. Press ${w.slot} to equip.`, 'good'); } });
+          buy: () => { P.money -= price; P.owned[key] = true; P.mag[key] = w.cap || 0; if (key === 'bow') { P.owned.firebow = true; P.mag.firebow = 1; } if (w.ammo && (P.ammo[w.ammo] || 0) < AMMO[w.ammo].box) P.ammo[w.ammo] = AMMO[w.ammo].box; P.select(key); UI.notify(`Purchased the ${w.name}. Press ${w.slot} or hold T to equip.`, 'good'); } });
       } else if (kind === 'horse') {
         const hb = HORSE_BREEDS[key];
         const trade = P.horse && !P.horse.dead ? Math.floor((P.horse.def.price || 30) * 0.4) : 0;
@@ -372,6 +372,7 @@ const Economy = {
         out.push(e);
       }
     }
+    out.push(...Hooks.collect('shopEntries', shopId));
     return out;
   },
   sellEntries(shopId) {
@@ -447,6 +448,7 @@ const Interact = {
     const add = (label, x, y, r, act, priority) => out.push({ label, x, y, r, act, priority });
     if (Law.arrest && !Law.arrest.surrendering) add('Surrender to the law', P.x, P.y, 999, () => Law.surrender(), 500);
     for (const m of MissionSys.interactions()) out.push(m);
+    for (const m of Hooks.collect('interactions')) out.push(m);
     for (const m of Bounties.interactions()) out.push(m);
     for (const m of Events.interactions()) out.push(m);
     for (const a of G.actors) {
