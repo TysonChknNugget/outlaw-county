@@ -280,12 +280,12 @@ const UI = {
     const px = wx => wx / TS * z + ox, py = wy => wy / TS * z + oy;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.fillStyle = '#d6c49c'; g.fillRect(0, 0, c.width, c.height);
-    g.imageSmoothingEnabled = false;
-    g.drawImage(World.minimap, ox, oy, World.W * z, World.H * z);
-    g.fillStyle = 'rgba(230,205,160,0.16)'; g.fillRect(0, 0, c.width, c.height);
+    // v2.10: a hand-drawn paper map, and no fog of war
+    const paper = typeof MapArt !== 'undefined' ? MapArt.canvas() : null;
+    g.imageSmoothingEnabled = !!paper && z < 3; g.imageSmoothingQuality = 'high';
+    g.drawImage(paper || World.minimap, ox, oy, World.W * z, World.H * z);
     g.imageSmoothingEnabled = true;
-    g.drawImage(Discovery.fogCanvas(), ox, oy, World.W * z, World.H * z);
-    const P = G.player, seen = (x, y) => Discovery.seenAt(x, y), fs = clamp(Math.round(9 + z * 1.6), 11, 18);
+    const P = G.player, seen = () => true, fs = clamp(Math.round(9 + z * 1.6), 11, 18);
     g.textAlign = 'center';
     const label = (t, x, y, col = '#2a1a0e', size = fs) => {
       g.font = `bold ${size}px Georgia, serif`;
