@@ -6,7 +6,7 @@
 'use strict';
 
 const T = { GRASS: 0, SAND: 1, ROAD: 2, FOREST: 3, WATER: 4, ROCK: 5, FLOOR: 6, WALL: 7, BRIDGE: 8, DRYBED: 9, SCRUB: 10, TOWN: 11, GRAVEL: 12, BOARD: 13, CANYON: 14,
-  SNOW: 15, ICE: 16, CLAY: 17, SALT: 18, SHALLOW: 19, PRAIRIE: 20, SNOWFOREST: 21 };
+  SNOW: 15, ICE: 16, CLAY: 17, SALT: 18, SHALLOW: 19, PRAIRIE: 20, SNOWFOREST: 21, COBBLE: 22, PAVE: 23 };
 const SOL = { MOVE: 1, SHOT: 2, VIS: 4, ALL: 7 };
 const NATURAL = new Set([T.GRASS, T.SAND, T.FOREST, T.SCRUB, T.DRYBED, T.TOWN, T.ROAD, T.CANYON, T.WATER, T.SNOW, T.ICE, T.CLAY, T.SALT, T.SHALLOW, T.PRAIRIE, T.SNOWFOREST]);
 const RAIL_ROW = 146;
@@ -48,7 +48,8 @@ const World = {
   /* opts.lite = only the original 320x240 county (used by the website previews) */
   generate(seed = 1889, opts = {}) {
     const lite = !!opts.lite, OW = 320, OH = 240;
-    this.W = lite ? OW : 1280; this.H = lite ? OH : (this.generateMexico ? 1920 : 960);   // v2.7: Mexico doubles the map's height
+    this.W = lite ? OW : (this.generateKingsport ? 1792 : 1280);   // v2.9: Kingsport adds a strip in the east
+    this.H = lite ? OH : (this.generateMexico ? 1920 : 960);   // v2.7: Mexico doubles the map's height
     this.OW = OW; this.OH = OH; this.lite = lite;
     const W = this.W, H = this.H;
     this.props = []; this.buildings = []; this.chunkCache = new Map();
@@ -272,6 +273,7 @@ const World = {
     // the six frontier regions around the original county (world-frontier.js)
     if (!lite) this.generateFrontier(seed);
     if (!lite && this.generateMexico) this.generateMexico(seed);
+    if (!lite && this.generateKingsport) this.generateKingsport(seed);
 
     // 11. solidity from tiles
     for (let i = 0; i < W * H; i++) {
@@ -578,7 +580,7 @@ const World = {
       [T.GRASS]: [104, 120, 60], [T.SAND]: [205, 168, 110], [T.ROAD]: [150, 108, 70], [T.FOREST]: [46, 70, 38], [T.WATER]: [60, 110, 140],
       [T.ROCK]: [110, 84, 70], [T.FLOOR]: [70, 46, 30], [T.WALL]: [60, 38, 24], [T.BRIDGE]: [130, 92, 56], [T.DRYBED]: [184, 156, 118],
       [T.SCRUB]: [150, 136, 84], [T.TOWN]: [170, 134, 92], [T.GRAVEL]: [90, 82, 76], [T.BOARD]: [130, 92, 56], [T.CANYON]: [168, 102, 66],
-      [T.SNOW]: [228, 232, 238], [T.ICE]: [176, 210, 228], [T.CLAY]: [176, 86, 54], [T.SALT]: [238, 234, 224], [T.SHALLOW]: [112, 152, 160], [T.PRAIRIE]: [112, 140, 64], [T.SNOWFOREST]: [72, 98, 86]
+      [T.SNOW]: [228, 232, 238], [T.ICE]: [176, 210, 228], [T.CLAY]: [176, 86, 54], [T.SALT]: [238, 234, 224], [T.SHALLOW]: [112, 152, 160], [T.PRAIRIE]: [112, 140, 64], [T.SNOWFOREST]: [72, 98, 86], [T.COBBLE]: [104, 98, 92], [T.PAVE]: [158, 148, 132]
     };
     for (let i = 0; i < this.W * this.H; i++) {
       const cc = col[this.tiles[i]] || [0, 0, 0], o = i * 4;
@@ -709,6 +711,22 @@ const World = {
         r = 104; g = 138; b = 58;
         const v = (nb - 0.5) * 16 + (n - 0.5) * 12 + (nc - 0.5) * 10; r += v; g += v * 1.1; b += v * 0.6;
         if (n > 0.95) { r += 40; g += 30; b -= 4; } else if (n < 0.04) { r -= 20; g -= 16; b -= 10; }
+        break;
+      }
+      case T.COBBLE: {
+        // cobblestones: staggered rows of rounded stones with dark joints
+        const row = py >> 2, off = (row & 1) * 3, cx = (px + off) % 6, sid = hash2((px + off) / 6 | 0, row);
+        r = 108 + (sid - 0.5) * 26; g = 100 + (sid - 0.5) * 22; b = 92 + (sid - 0.5) * 18;
+        if ((py & 3) === 0 || cx === 0) { r -= 34; g -= 32; b -= 30; } else if ((py & 3) === 1 && cx < 4) { r += 16; g += 15; b += 13; }
+        if (n > 0.985) { r -= 20; g -= 18; b -= 16; }
+        break;
+      }
+      case T.PAVE: {
+        // flagstone sidewalk slabs
+        const sx = px >> 3, sy = py >> 3, sid = hash2(sx, sy);
+        r = 160 + (sid - 0.5) * 16; g = 150 + (sid - 0.5) * 14; b = 134 + (sid - 0.5) * 12;
+        if ((px & 7) === 0 || (py & 7) === 0) { r -= 28; g -= 26; b -= 24; }
+        const v = (n - 0.5) * 8; r += v; g += v; b += v;
         break;
       }
       default: r = g = b = 255;

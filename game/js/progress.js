@@ -278,6 +278,7 @@ const Events = {
 const Discovery = {
   CW: 160, CHh: 240, CELL: 8, t: 0, fog: null, dirty: true,
   fresh() {
+    if (World.W > 320) { this.CW = Math.ceil(World.W / this.CELL); this.CHh = Math.ceil(World.H / this.CELL); }   // v2.9: the map grew east
     const a = new Uint8Array(this.CW * this.CHh);
     for (let y = 0; y < 30; y++) for (let x = 0; x < 40; x++) a[y * this.CW + x] = 1;   // the home county is known
     return a;
@@ -289,7 +290,10 @@ const Discovery = {
   },
   decode(str) {
     const a = this.fresh();
-    try { const s = atob(str); for (let i = 0; i < s.length; i++) { const b = s.charCodeAt(i); for (let j = 0; j < 8; j++) if (b & (1 << j)) a[i * 8 + j] = 1; } } catch (e) { /* corrupt: keep defaults */ }
+    try {
+      const s = atob(str), oldW = s.length * 8 === 160 * 240 && this.CW !== 160 ? 160 : 0;   // saves from before Kingsport were 160 cells wide
+      for (let i = 0; i < s.length; i++) { const b = s.charCodeAt(i); for (let j = 0; j < 8; j++) if (b & (1 << j)) { const k = i * 8 + j; a[oldW ? Math.floor(k / oldW) * this.CW + k % oldW : k] = 1; } }
+    } catch (e) { /* corrupt: keep defaults */ }
     return a;
   },
   ensure() {

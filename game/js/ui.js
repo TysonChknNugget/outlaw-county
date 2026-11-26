@@ -143,14 +143,14 @@ const UI = {
     for (const e of Economy.entries(this.shopId)) {
       const row = document.createElement('div'); row.className = 'row';
       let icon = '';
-      if (e.weapon) icon = `<canvas width="72" height="24" data-w="${e.weapon}"></canvas>`;
+      if (e.weapon) icon = `<canvas width="112" height="36" data-w="${e.weapon}"></canvas>`;
       row.innerHTML = `<div class="r-main">${icon}<div><b>${esc(e.name)}</b><small>${esc(e.desc || '')}</small></div></div><div class="r-note">${esc(e.note || '')}</div><div class="r-price">${e.noCharge && !e.price ? '' : formatMoney(e.price)}</div>`;
       const btn = document.createElement('button'); btn.className = 'btn small';
       btn.textContent = e.reason || e.label || (e.noCharge ? 'Pay' : 'Buy'); btn.disabled = !e.can;
       btn.onclick = () => { e.buy(); Sound.play('buy'); if (this.modal === 'shop') this.renderShop(); };
       row.append(btn); buy.append(row);
     }
-    buy.querySelectorAll('canvas[data-w]').forEach(c => Sprites.weaponIcon(c.getContext('2d'), c.dataset.w, 0, 0, 2));
+    buy.querySelectorAll('canvas[data-w]').forEach(c => Sprites.weaponIcon(c.getContext('2d'), c.dataset.w, 0, 0, 2, 112, 36));
     const sells = Economy.sellEntries(this.shopId), sell = $('shop-sell');
     $('shop-sell-wrap').classList.toggle('hidden', !SHOP_STOCK[shop.type].sells.length);
     sell.innerHTML = sells.length ? '' : '<p class="muted">Nothing they want to buy.</p>';
@@ -179,8 +179,8 @@ const UI = {
     for (const k of WEAPON_ORDER) {
       const w = WEAPONS[k], owned = P.owned[k];
       const card = document.createElement('div'); card.className = 'wcard' + (owned ? '' : ' locked') + (P.cur === k ? ' active' : '');
-      card.innerHTML = `<canvas width="84" height="28"></canvas><b>${esc(w.name)}</b><small>${owned ? (w.melee ? 'Melee' : `${P.mag[k]}/${w.cap} · ${P.ammo[w.ammo]} spare`) : `Gunsmith ${formatMoney(w.price)}`}</small><span class="slot">${w.slot}</span>`;
-      Sprites.weaponIcon(card.querySelector('canvas').getContext('2d'), k, 0, 0, 2);
+      card.innerHTML = `<canvas width="112" height="36"></canvas><b>${esc(w.name)}</b><small>${owned ? (w.melee ? 'Melee' : `${P.mag[k]}/${w.cap} · ${P.ammo[w.ammo]} spare`) : `Gunsmith ${formatMoney(w.price)}`}</small><span class="slot">${w.slot}</span>`;
+      Sprites.weaponIcon(card.querySelector('canvas').getContext('2d'), k, 0, 0, 2, 112, 36);
       if (owned) card.onclick = () => { P.select(k); this.renderInventory(); };
       wg.append(card);
     }
@@ -302,7 +302,8 @@ const UI = {
     }
     const close = z >= 1.2;
     for (const [n, tx, ty] of regions.slice(0, close ? 10 : 7)) if (seen(tx * TS, ty * TS)) label(n, px(tx * TS), py(ty * TS), '#4a3a22', Math.round(fs * 1.1));
-    for (const t of World.towns) if (G.world.discovered.includes(t.name) || seen((t.x0 + t.x1) / 2 * TS, (t.y0 + t.y1) / 2 * TS)) label(t.name, px((t.x0 + t.x1) / 2 * TS), py(t.y0 * TS) - 4);
+    for (const t of World.towns) if (!t.district && (G.world.discovered.includes(t.name) || seen((t.x0 + t.x1) / 2 * TS, (t.y0 + t.y1) / 2 * TS))) label(t.name, px((t.x0 + t.x1) / 2 * TS), py(t.y0 * TS) - 4);
+    if (typeof KP !== 'undefined' && World.kpLandmarks && (G.world.discovered.includes('Kingsport') || seen(World.poi.kingsport.x, World.poi.kingsport.y))) label('KINGSPORT', px((KP.X0 + KP.X1) / 2 * TS), py(KP.Y0 * TS) - 6);
     if (MissionSys.flags.hideout) { const cp = Story.campPos(); label(Story.campName(), px(cp.x), py(cp.y) - 22); }
     if (close) label("Marshal's Camp", px(World.poi.marshalCamp.x), py(World.poi.marshalCamp.y) - 10, '#4a2a1a');
     for (const [n, poi] of [['Hollow Creek', World.poi.hollowCreek], ['Last Water', World.poi.lastWater], ['Silver Crown Mine', World.poi.silverMine]]) if (close && poi && seen(poi.x, poi.y)) label(n, px(poi.x), py(poi.y) - 12, '#3a2a2a');
@@ -423,7 +424,7 @@ const UI = {
     $('mag').textContent = w.melee ? '—' : P.mag[P.cur];
     $('reserve').textContent = w.melee ? '∞' : P.ammo[w.ammo];
     $('ammo').classList.toggle('low', !w.melee && P.mag[P.cur] === 0);
-    if (this.lastIcon !== P.cur) { this.lastIcon = P.cur; const g = this.wi; g.clearRect(0, 0, 120, 40); Sprites.weaponIcon(g, P.cur, 10, 4, 3); }
+    if (this.lastIcon !== P.cur) { this.lastIcon = P.cur; const g = this.wi; g.clearRect(0, 0, 120, 40); Sprites.weaponIcon(g, P.cur, 0, 2, 3, 120, 36); }
     $('reload-state').textContent = P.reload ? 'Reloading...' : (P.cockT > 0 ? 'Cocking...' : P.leverT > 0 ? 'Working lever...' : '');
     const slots = $('weapon-slots');
     const html = [1, 2, 3, 4, 5].map(n => {

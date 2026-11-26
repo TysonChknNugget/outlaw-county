@@ -808,7 +808,7 @@ class Actor extends Ent {
         const r = Math.random(), wps = World.townWaypoints[this.town];
         if (r < 0.28) {
           const shops = World.buildings.filter(b => b.town === this.town && b.type !== 'house' && b.type !== 'sheriff');
-          const b = pick(shops); this.enterB = b; this.goal = { x: (b.door.x + 0.5) * TS, y: (b.door.y + 1.5) * TS }; this.state = 'walk'; this.timer = 40;
+          const b = pick(shops); if (!b) { this.timer = 2; return; } this.enterB = b; this.goal = { x: (b.door.x + 0.5) * TS, y: (b.door.y + 1.5) * TS }; this.state = 'walk'; this.timer = 40;
         } else if (r < 0.85) {
           const wp = pick(wps); this.goal = { x: wp.x + rand(-12, 12), y: wp.y + rand(-10, 10) }; this.state = 'walk'; this.timer = 40;
         } else { this.state = 'idle'; this.timer = rand(3, 8); }

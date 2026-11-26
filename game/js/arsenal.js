@@ -179,7 +179,7 @@ const Arsenal = {
       const am = (i / n) * TAU - Math.PI / 2, rr = (R1 + R2) / 2;
       const ix = cx + Math.cos(am) * rr, iy = cy + Math.sin(am) * rr;
       const sc = n > 22 ? 1 : n > 10 ? 1.5 : 2;
-      Sprites.weaponIcon(g, list[i], ix - 18 * sc, iy - 6 * sc, sc);
+      Sprites.weaponIcon(g, list[i], ix - 28 * sc, iy - 9 * sc, sc, 56 * sc, 18 * sc);
     }
     const k = list[this.wheel.sel], w = k && WEAPONS[k];
     g.textAlign = 'center'; g.fillStyle = '#f0e0b8'; g.font = 'bold 15px Georgia, serif';
