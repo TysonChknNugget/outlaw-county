@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data:">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data:; connect-src 'self' file: https://0.peerjs.com wss://0.peerjs.com">
   <title>Outlaw County</title>
   <link rel="icon" href="../assets/icon.png">
   <link rel="stylesheet" href="css/game.css">
@@ -296,5 +296,7 @@
   <script src="js/honest.js"></script>
   <script src="js/wild.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/lib/peerjs.min.js"></script>
+  <script src="js/online.js"></script>
 </body>
 </html>
