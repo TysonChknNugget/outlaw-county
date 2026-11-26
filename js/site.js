@@ -225,12 +225,13 @@
     g.drawImage(World.minimap, 0, 0, mc.width, mc.height);
     g.fillStyle = 'rgba(234,217,178,.12)'; g.fillRect(0, 0, mc.width, mc.height);
     g.font = 'bold 30px Georgia, serif'; g.textAlign = 'center';
-    const lab = (t, x, y, c = '#2a1608') => { const w = g.measureText(t).width; g.fillStyle = 'rgba(240,225,190,.88)'; g.fillRect(x - w / 2 - 7, y - 28, w + 14, 37); g.fillStyle = c; g.fillText(t, x, y); };
-    for (const t of World.towns) if (t.name !== 'Cottonwood Crossing') lab(t.name, (t.x0 + t.x1) / 2 * sc, (t.y0 - 3) * sc);
+    const lab = (t, x, y, c = '#2a1608') => { const w = g.measureText(t).width; x = Math.min(Math.max(x, w / 2 + 10), mc.width - w / 2 - 10); g.fillStyle = 'rgba(240,225,190,.88)'; g.fillRect(x - w / 2 - 7, y - 28, w + 14, 37); g.fillStyle = c; g.fillText(t, x, y); };
+    for (const t of World.towns) if (t.name !== 'Cottonwood Crossing' && !t.district) lab(t.name, (t.x0 + t.x1) / 2 * sc, (t.y0 - 3) * sc);
     lab('Hollow Creek', 196 * sc, 590 * sc, '#3a2a2a');
     lab('Frostpeak Mountains', 800 * sc, 36 * sc, '#2a3a44'); lab('Harlow Lake', 1110 * sc, 30 * sc, '#1a3a5a'); lab('Ranch Country', 330 * sc, 450 * sc, '#2a3a10');
     lab('Red Canyonlands', 1010 * sc, 270 * sc, '#6a2a10'); lab('Bonewhite Salt Flats', 330 * sc, 540 * sc, '#4a4a4a'); lab('Mesa Badlands', 980 * sc, 520 * sc, '#6a4a1a');
     lab('Rio Bravo', 1000 * sc, 770 * sc, '#1a3a5a'); lab('Outlaw County', 160 * sc, 226 * sc, '#2a1608');
+    if (typeof KP !== 'undefined' && World.kpLandmarks) { lab('KINGSPORT', (KP.X0 + KP.X1) / 2 * sc, (KP.Y0 - 8) * sc, '#2a1608'); lab('Kingsport Bay', 1724 * sc, 300 * sc, '#1a3a5a'); lab('Tidewater Pines', 1500 * sc, 560 * sc, '#1a3a10'); lab('Kings River', 1430 * sc, 400 * sc, '#1a3a5a'); }
     for (const c of World.banditCamps) { g.fillStyle = '#8a1a1a'; g.beginPath(); g.arc(c.x / TS * sc, c.y / TS * sc, 9, 0, Math.PI * 2); g.fill(); }
     // wanted poster portrait
     const pc = $('#poster-canvas'), pg = pc.getContext('2d');
