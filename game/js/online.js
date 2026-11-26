@@ -15,7 +15,7 @@
  */
 'use strict';
 
-const ONLINE_VERSION = '2.11.0';
+const ONLINE_VERSION = '2.12.0';
 const ONLINE_MAX = 6;
 const ONLINE_WORDS = ['RATTLER', 'MUSTANG', 'COYOTE', 'BANDIT', 'SHERIFF', 'CANYON', 'BRONCO', 'LASSO', 'SPUR', 'MESA', 'CACTUS', 'BUCKSHOT', 'DESPERADO', 'POSSE', 'DEPUTY', 'STAMPEDE', 'GOLDRUSH', 'TUMBLEWEED'];
 const ROLES = { outlaw: { name: 'Outlaw', icon: '☠', col: '#e05a3a' }, lawman: { name: 'Lawman', icon: '★', col: '#e8c860' }, hunter: { name: 'Bounty Hunter', icon: '⌖', col: '#8ad0ff' } };
@@ -32,7 +32,7 @@ const Online = {
   saveChar() {
     const P = G.player; if (!this.active || !P) return;
     const c = this.char(), me = this.players[this.myId];
-    c.money = P.money; c.owned = Object.keys(P.owned).filter(k => P.owned[k]); c.ammo = Object.assign({}, P.ammo); if (me) c.role = me.role;
+    c.money = P.money; c.owned = Object.keys(P.owned).filter(k => P.owned[k]); c.ammo = Object.assign({}, P.ammo); if (me) c.role = me.role; if (this.homeData) c.home = this.homeData;
     localStorage.setItem('oc-online-char', JSON.stringify(c));
   },
   setName(n) { const c = this.char(); c.name = String(n || '').replace(/[^\w .'-]/g, '').slice(0, 16) || 'Stranger'; localStorage.setItem('oc-online-char', JSON.stringify(c)); return c.name; },
@@ -98,7 +98,7 @@ const Online = {
     if (this.duel && (this.duel.a === id || this.duel.b === id)) this.endDuel(null, 'The duel is off.');
     this.broadcast({ t: 'roster', players: this.roster() }); this.event(`${p.name} ${why}.`);
   },
-  roster() { return Object.values(this.players).map(p => ({ id: p.id, name: p.name, role: p.role, bounty: p.bounty, pal: p.pal })); },
+  roster() { return Object.values(this.players).map(p => ({ id: p.id, name: p.name, role: p.role, bounty: p.bounty, pal: p.pal, home: p.home || null })); },
 
   /* ---------------- starting and leaving the online world */
   async begin() {
@@ -111,11 +111,14 @@ const Online = {
       P.x = sp.x; P.y = sp.y; P.money = c.money;
       for (const k of Object.keys(P.owned)) P.owned[k] = false; for (const k of c.owned) if (WEAPONS[k]) P.owned[k] = true; P.owned.fists = true;
       Object.assign(P.ammo, c.ammo || {}); if (!P.owned[P.cur]) P.cur = 'sa';
+      this.homeData = c.home || null;
+      const hp = typeof Homestead !== 'undefined' && Homestead.spawnPoint(); if (hp) { P.x = hp.x; P.y = hp.y; }
       G.world.discovered.push('Kingsport'); Game.snapCamera();
     });
     G.state = 'play'; Game.snapCamera(); UI.enterGame(); UI.fade(1.2);
     G.region = World.regionAt(G.player.x, G.player.y);
     this.applyRole();
+    if (typeof Homestead !== 'undefined') Homestead.syncOnline();
     UI.notify(this.host ? `Your party is open. Give your friends the code ${this.code}.` : `You joined party ${this.code}.`, 'mission');
     UI.notify('Online: B for callouts, P for the party. Walk up to a player to challenge them to a duel.', 'tip');
     this.renderParty(true);
@@ -125,6 +128,7 @@ const Online = {
     this.saveChar();
     try { if (this.hostConn) this.hostConn.close(); for (const c of Object.values(this.conns)) c.close(); if (this.peer) this.peer.destroy(); } catch (e) { /* closing anyway */ }
     for (const g of Object.values(this.ghosts)) g.removeMe = true;
+    this.homeData = null;
     Object.assign(this, { active: false, host: false, peer: null, conns: {}, hostConn: null, players: {}, ghosts: {}, duel: null, freeze: 0, code: '' });
     $('ol-party').classList.add('hidden');
   },
@@ -153,9 +157,13 @@ const Online = {
         p.bounty += amt; this.broadcast({ t: 'roster', players: this.roster() }); break;
       }
       case 'paybounty': { p.bounty = 0; this.broadcast({ t: 'roster', players: this.roster() }); break; }
+      case 'home': { p.home = m.h || null; this.broadcast({ t: 'roster', players: this.roster() }); break; }
+      case 'help': { if (this.players[m.to]) this.to(m.to, { t: 'help', from, name: p.name, sid: m.sid }); break; }
+      case 'payto': { if (this.players[m.to]) this.to(m.to, { t: 'pay', amt: clamp(m.amt | 0, 0, 50), msg: String(m.msg || '').slice(0, 120) }); break; }
       case 'hit': {
         const tgt = this.players[m.to]; if (!tgt || !p.st || !tgt.st) break;
         if (dist(p.st.x, p.st.y, tgt.st.x, tgt.st.y) > 1000) break;                       // can't hit what's that far away
+        if (typeof Homestead !== 'undefined' && Homestead.safeAt(tgt)) { this.to(from, { t: 'event', text: `${tgt.name} is on their own land. You can't hurt them there.` }); break; }
         if (this.duel && this.duel.stage === 'draw' && ((this.duel.a === from && this.duel.b === m.to) || (this.duel.b === from && this.duel.a === m.to))) { this.endDuel(from, null); break; }
         if (this.duel && (this.duel.a === m.to || this.duel.b === m.to || this.duel.a === from || this.duel.b === from)) break;   // duelists can't be shot by others
         this.to(m.to, { t: 'hurt', dmg: clamp(+m.dmg || 0, 0, 400), from, role: p.role });
@@ -164,6 +172,7 @@ const Online = {
       case 'died': this.settleDeath(from, m.by, false); break;
       case 'arrest': {
         const tgt = this.players[m.to]; if (!tgt || !tgt.st || !tgt.st.dn || p.role === 'outlaw') break;
+        if (typeof Homestead !== 'undefined' && Homestead.safeAt(tgt)) { this.to(from, { t: 'event', text: `${tgt.name} is on their own land.` }); break; }
         this.to(m.to, { t: 'arrested', by: p.name }); this.settleDeath(m.to, from, true); break;
       }
       case 'duelAsk': { const tgt = this.players[m.to]; if (!tgt || this.duel) { this.to(from, { t: 'event', text: 'They can\'t duel right now.' }); break; } this.to(m.to, { t: 'duelAsk', from, name: p.name, bet: clamp(m.bet | 0, 0, 100) }); break; }
@@ -235,6 +244,7 @@ const Online = {
       case 'call': { const g = m.from === this.myId ? P : this.ghosts[m.from]; const who = (this.players[m.from] || {}).name || '?'; if (g && g.bark) g.bark(m.text, true); else if (g === P) Floaters.add(P.x, P.y - 30, m.text, '#ffe39a'); UI.notify(`${who}: "${m.text}"`, 'info'); break; }
       case 'duelAsk': UI.dialogue([{ who: m.name, text: `${m.name} calls you out to a duel${m.bet ? ` for $${m.bet}` : ''}. Wait for the bell, then draw. Fire early and you lose.` }], null, { choices: [{ label: 'Accept', value: true }, { label: 'Decline', value: false }], onChoose: ok => { if (ok && m.bet && P.money < m.bet) { UI.notify(`You don't have $${m.bet}.`, 'warn'); ok = false; } this.send({ t: 'duelReply', to: m.from, ok, bet: m.bet }); } }); break;
       case 'duel': this.duelMsg(m); break;
+      case 'help': if (typeof Homestead !== 'undefined') Homestead.onHelp(m); break;
     }
   },
 
@@ -471,7 +481,7 @@ const Online = {
     UI.notify('You were killed. Back on your feet in a few seconds...', 'bad');
     setTimeout(() => {
       if (!Online.active || !P.dead) return;
-      const sp = World.findOpen(World.poi.kingsport.x + rand(-200, 200), World.poi.kingsport.y + rand(-100, 100), 12) || World.poi.kingsport;
+      const sp = (typeof Homestead !== 'undefined' && Homestead.spawnPoint()) || World.findOpen(World.poi.kingsport.x + rand(-200, 200), World.poi.kingsport.y + rand(-100, 100), 12) || World.poi.kingsport;
       P.x = sp.x; P.y = sp.y; P.dead = false; P.hp = P.maxHp; P.stamina = 100; P.invuln = 3; P.reload = null; Law.clearHeat('died');
       if (P.ammo.revolver < 12) P.ammo.revolver = 12; Game.snapCamera(); UI.fade(1);
     }, 5000);

@@ -274,6 +274,7 @@ const World = {
     if (!lite) this.generateFrontier(seed);
     if (!lite && this.generateMexico) this.generateMexico(seed);
     if (!lite && this.generateKingsport) this.generateKingsport(seed);
+    if (!lite && this.generateHomesteads) this.generateHomesteads(seed);
 
     // 11. solidity from tiles
     for (let i = 0; i < W * H; i++) {
